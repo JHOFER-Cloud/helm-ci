@@ -21,7 +21,7 @@ on:
 jobs:
   # Example with Helm
   deploy-with-helm:
-    uses: ./.github/workflows/k8s-deploy-template.yml
+    uses: JHOFER-Cloud/helm-ci/.github/workflows/k8s-deploy-template.yml@main
     with:
       app_name: my-helm-app
       deployment_type: helm
@@ -36,7 +36,7 @@ jobs:
 
   # Example with raw manifests
   deploy-raw-app:
-    uses: ./.github/workflows/k8s-deploy-template.yml
+    uses: JHOFER-Cloud/helm-ci/.github/workflows/k8s-deploy-template.yml@main
     with:
       app_name: my-raw-app
       deployment_type: manifest
