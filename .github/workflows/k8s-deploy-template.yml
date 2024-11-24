@@ -1,0 +1,95 @@
+# .github/workflows/k8s-deploy-template.yml
+name: Reusable Kubernetes Deploy
+
+on:
+  workflow_call:
+    inputs:
+      app_name:
+        required: true
+        type: string
+      deployment_type:
+        required: true
+        type: string
+      helm_repository:
+        required: false
+        type: string
+      helm_chart:
+        required: false
+        type: string
+      helm_version:
+        required: false
+        type: string
+      values_path:
+        required: false
+        type: string
+        default: "helm/values"
+      ingress_domain:
+        required: false
+        type: string
+        default: "example.com"
+      image:
+        required: false
+        type: string
+      port:
+        required: false
+        type: number
+        default: 8080
+    secrets:
+      KUBE_CONFIG_DEV:
+        required: true
+      KUBE_CONFIG_LIVE:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - environment: development
+            kubeconfig: KUBE_CONFIG_DEV
+            stage: dev
+            condition: github.event_name == 'pull_request'
+          - environment: live
+            kubeconfig: KUBE_CONFIG_LIVE
+            stage: live
+            condition: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    if: ${{ matrix.condition }}
+    environment: ${{ matrix.environment }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Set up Helm
+        if: inputs.deployment_type == 'helm'
+        uses: azure/setup-helm@v3
+
+      - name: Configure kubectl
+        run: |
+          echo "${{ secrets[matrix.kubeconfig] }}" > kubeconfig.yaml
+          export KUBECONFIG=kubeconfig.yaml
+
+      - name: Run deployment script
+        run: |
+          go run deploy/main.go \
+            --type ${{ inputs.deployment_type }} \
+            --stage ${{ matrix.stage }} \
+            --env ${{ matrix.environment }} \
+            --app ${{ inputs.app_name }} \
+            --pr ${{ github.event.pull_request.number || '' }} \
+            --values ${{ inputs.values_path }} \
+            --chart ${{ inputs.helm_chart }} \
+            --version ${{ inputs.helm_version }} \
+            --repo ${{ inputs.helm_repository }} \
+            --domain ${{ inputs.ingress_domain }} \
+            --image ${{ inputs.image }} \
+            --port ${{ inputs.port }}
