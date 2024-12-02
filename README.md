@@ -2,11 +2,8 @@
 
 ## Usage
 
-```bash
-helm repo add traefik https://traefik.github.io/charts
-helm repo update
-helm install traefik traefik/traefik -n traefik --create-namespace
-```
+Examples: 
+- [helm-traefik](https://github.com/JHOFER-Cloud/helm-traefik)
 
 ### Custom values, no chart
 
