@@ -60,7 +60,7 @@ jobs:
           go-version: "1.21"
 
       - name: Setup Kubernetes Tools
-        uses: yokawasa/action-setup-kube-tools@v0.9.3
+        uses: yokawasa/action-setup-kube-tools@v0.11.2
         with:
           kubectl: "1.27.3"
           helm: "3.12.3"
