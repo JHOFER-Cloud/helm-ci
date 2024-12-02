@@ -6,10 +6,6 @@ on:
       app_name:
         required: true
         type: string
-      custom:
-        required: false
-        type: boolean
-        default: false
       helm_repository:
         required: false
         type: string
@@ -34,22 +30,23 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - stage: dev
-            environment: Development
-            kubeconfig: KUBE_CONFIG_DEV
-          - stage: live
-            environment: Production
-            kubeconfig: KUBE_CONFIG_LIVE
-    environment: ${{ matrix.environment }}
-
+    runs-on: self-hosted-ubuntu-22.04
+    environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     container:
-      image: ghcr.io/jhofer-cloud/helm-ci:latest # or whatever registry you prefer
+      image: ghcr.io/jhofer-cloud/helm-ci:latest
 
     steps:
+      - name: Set deployment variables
+        id: vars
+        run: |
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "stage=live" >> $GITHUB_OUTPUT
+            echo "env=Production" >> $GITHUB_OUTPUT
+          else
+            echo "stage=dev" >> $GITHUB_OUTPUT
+            echo "env=Development" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -62,23 +59,35 @@ jobs:
       - name: Setup Kubeconfig
         run: |
           mkdir -p ~/.kube
-          echo "${{ secrets[matrix.kubeconfig] }}" > ~/.kube/config
+          if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "${{ secrets.KUBE_CONFIG_LIVE }}" > ~/.kube/config
+          else
+            echo "${{ secrets.KUBE_CONFIG_DEV }}" > ~/.kube/config
+          fi
           chmod 600 ~/.kube/config
 
       - name: Run deployment
+        id: deploy
         run: |
           deploy \
-            --stage ${{ matrix.stage }} \
-            --env ${{ matrix.environment }} \
+            --stage ${{ steps.vars.outputs.stage }} \
             --app ${{ inputs.app_name }} \
-            --pr ${{ github.event.pull_request.number || '' }} \
+            --env ${{ steps.vars.outputs.env }} \
+            --pr ${{ github.event.pull_request.number }} \
             --values ${{ inputs.values_path }} \
-            --custom ${{ inputs.custom }} \
             --chart ${{ inputs.helm_chart }} \
             --version ${{ inputs.helm_version }} \
             --repo ${{ inputs.helm_repository }} \
             --domain ${{ inputs.ingress_domain }}
 
+      - name: Create deployment status
+        uses: chrnorm/deployment-action@v2
+        if: success()
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment-url: ${{ steps.deploy.outputs.url }}
+          environment: ${{ steps.vars.outputs.env }}
+
       - name: Cleanup Kubeconfig
         if: always()
-        run: rm -f ~/.kube/confige/config
+        run: rm -f ~/.kube/config

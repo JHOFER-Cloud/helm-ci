@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"text/template"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubernetes "k8s.io/client-go/kubernetes"
 )
 
 type Config struct {
@@ -34,7 +39,6 @@ func parseFlags() *Config {
 	flag.StringVar(&cfg.Environment, "env", "", "Environment")
 	flag.StringVar(&cfg.PRNumber, "pr", "", "PR number")
 	flag.StringVar(&cfg.ValuesPath, "values", "helm/values", "Path to values files")
-	flag.BoolVar(&cfg.Custom, "custom", false, "Use custom values only")
 	flag.StringVar(&cfg.Chart, "chart", "", "Helm chart (optional)")
 	flag.StringVar(&cfg.Version, "version", "", "Chart version (optional)")
 	flag.StringVar(&cfg.Repository, "repo", "", "Helm repository (optional)")
@@ -57,12 +61,22 @@ func parseFlags() *Config {
 		os.Exit(1)
 	}
 
-	if !cfg.Custom && (cfg.Chart == "" || cfg.Repository == "") {
-		fmt.Println("chart and repository are required when not using custom values")
-		os.Exit(1)
-	}
+	// If chart and repository are provided, it's not a custom deployment
+	cfg.Custom = cfg.Chart == "" || cfg.Repository == ""
 
 	return cfg
+}
+
+func (c *Config) PrintConfig() {
+	fmt.Println("Current Configuration:")
+	v := reflect.ValueOf(c).Elem()
+	t := v.Type()
+
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+		fieldName := t.Field(i).Name
+		fmt.Printf("- %s: %v\n", fieldName, field.Interface())
+	}
 }
 
 func (c *Config) setupNames() {
@@ -160,13 +174,54 @@ func processTemplate(inputPath, outputPath string, data ValuesTemplateData) erro
 	return nil
 }
 
+func cleanupOrphanedResources(clientset *kubernetes.Clientset, namespace string) error {
+	// Delete deployments
+	if err := clientset.AppsV1().Deployments(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{}, metav1.ListOptions{}); err != nil {
+		return fmt.Errorf("failed to delete deployments: %v", err)
+	}
+
+	// Delete services
+	services, err := clientset.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list services: %v", err)
+	}
+	for _, svc := range services.Items {
+		if svc.Name != "kubernetes" { // Skip kubernetes default service
+			if err := clientset.CoreV1().Services(namespace).Delete(context.Background(), svc.Name, metav1.DeleteOptions{}); err != nil {
+				return fmt.Errorf("failed to delete service %s: %v", svc.Name, err)
+			}
+		}
+	}
+
+	// Delete ingresses
+	if err := clientset.NetworkingV1().Ingresses(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{}, metav1.ListOptions{}); err != nil {
+		return fmt.Errorf("failed to delete ingresses: %v", err)
+	}
+
+	// Delete secrets
+	if err := clientset.CoreV1().Secrets(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{}, metav1.ListOptions{}); err != nil {
+		return fmt.Errorf("failed to delete secrets: %v", err)
+	}
+
+	// Finally, delete the namespace itself
+	if err := clientset.CoreV1().Namespaces().Delete(context.Background(), namespace, metav1.DeleteOptions{}); err != nil {
+		return fmt.Errorf("failed to delete namespace %s: %v", namespace, err)
+	}
+
+	return nil
+}
+
 func (c *Config) deployHelm() error {
+	c.PrintConfig()
+
 	if !c.Custom && (c.Chart == "" || c.Repository == "") {
 		return fmt.Errorf("chart and repository required when not using custom values")
 	}
 
 	if !c.Custom {
-		cmd := exec.Command("helm", "repo", "add", "app", c.Repository)
+		// Add and update helm repo
+		repoName := strings.Split(c.Chart, "/")[0]
+		cmd := exec.Command("helm", "repo", "add", repoName, c.Repository)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -181,27 +236,28 @@ func (c *Config) deployHelm() error {
 		}
 	}
 
+	// Create helm upgrade command without --wait first
 	args := []string{
 		"upgrade", "--install",
 		c.ReleaseName,
 	}
 
-	if !c.Custom {
+	if c.Custom {
+		args = append(args, ".")
+	} else {
 		args = append(args, c.Chart)
 	}
 
 	args = append(args,
 		"--namespace", c.Namespace,
 		"--create-namespace",
-		"--wait",
-		"--timeout", "10m",
 	)
 
 	if !c.Custom && c.Version != "" {
 		args = append(args, "--version", c.Version)
 	}
 
-	// Add default Traefik values if not in custom values
+	// Add values files
 	defaultValues := fmt.Sprintf(`
 ingress:
   enabled: true
@@ -226,7 +282,6 @@ ingress:
 		return err
 	}
 
-	// Add values files
 	if !c.Custom {
 		args = append(args, "-f", tmpFile.Name())
 	}
@@ -241,15 +296,45 @@ ingress:
 		args = append(args, "-f", stageValues)
 	}
 
+	// First deploy without --wait
 	cmd := exec.Command("helm", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error deploying helm chart: %v", err)
+	}
 
-	return cmd.Run()
+	// Then wait for rollout
+	fmt.Println("Waiting for deployments to roll out...")
+	cmd = exec.Command("kubectl", "get", "deploy", "-n", c.Namespace, "-o", "name")
+	output, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("error getting deployments: %v", err)
+	}
+
+	deployments := strings.Split(strings.TrimSpace(string(output)), "\n")
+	for _, deployment := range deployments {
+		if deployment == "" {
+			continue
+		}
+		fmt.Printf("Waiting for %s...\n", deployment)
+		cmd = exec.Command("kubectl", "rollout", "status", "-n", c.Namespace, deployment, "--timeout=10m")
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("error waiting for deployment %s: %v", deployment, err)
+		}
+	}
+
+	return nil
 }
 
 func main() {
 	cfg := parseFlags()
+
+	if err := cfg.cleanupOrphanedDeployments(); err != nil {
+		fmt.Printf("Warning: Failed to cleanup orphaned deployments: %v\n", err)
+	}
 
 	cfg.setupNames()
 
@@ -267,4 +352,12 @@ func main() {
 		fmt.Printf("Error deploying helm: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Output URL for GitHub Actions
+	f, err := os.OpenFile(os.Getenv("GITHUB_ENV"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		// handle error
+	}
+	defer f.Close()
+	fmt.Fprintf(f, "URL=https://%s\n", cfg.IngressHost)
 }
