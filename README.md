@@ -13,6 +13,12 @@ helm install traefik traefik/traefik -n traefik --create-namespace
 ```yaml
 # workflow.yml
 # For custom values only
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, dev*]
+
 jobs:
   deploy:
     uses: JHOFER-Cloud/helm-ci/.github/workflows/k8s-deploy-template.yml@main

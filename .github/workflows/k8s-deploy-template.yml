@@ -39,6 +39,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/jhofer-cloud/helm-ci:latest
     strategy:
       matrix:
         include:
