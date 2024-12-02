@@ -1,4 +1,4 @@
-# HELM CI/CD
+# HELM CI/CD (README OUTDATED)
 
 ## Usage
 
