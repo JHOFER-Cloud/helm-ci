@@ -6,10 +6,6 @@ on:
       app_name:
         required: true
         type: string
-      deployment_type:
-        required: false
-        type: string
-        default: "helm"
       custom:
         required: false
         type: boolean
@@ -39,8 +35,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/jhofer-cloud/helm-ci:latest
     strategy:
       matrix:
         include:
@@ -52,17 +46,15 @@ jobs:
             kubeconfig: KUBE_CONFIG_LIVE
     environment: ${{ matrix.environment }}
 
+    container:
+      image: ghcr.io/jhofer-cloud/helm-ci:latest # or whatever registry you prefer
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.21"
-
       - name: Setup Kubernetes Tools
-        uses: yokawasa/action-setup-kube-tools@v0.11.2
+        uses: yokawasa/action-setup-kube-tools@v0.9.3
         with:
           kubectl: "1.27.3"
           helm: "3.12.3"
@@ -73,9 +65,9 @@ jobs:
           echo "${{ secrets[matrix.kubeconfig] }}" > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      - name: Run deployment script
+      - name: Run deployment
         run: |
-          go run deploy/main.go \
+          deploy \
             --stage ${{ matrix.stage }} \
             --env ${{ matrix.environment }} \
             --app ${{ inputs.app_name }} \
@@ -89,4 +81,4 @@ jobs:
 
       - name: Cleanup Kubeconfig
         if: always()
-        run: rm -f ~/.kube/config
+        run: rm -f ~/.kube/confige/config
