@@ -25,6 +25,9 @@ type Config struct {
 	Namespace   string
 	ReleaseName string
 	IngressHost string
+	GitHubToken string
+	GitHubRepo  string
+	GitHubOwner string
 }
 
 func parseFlags() *Config {
