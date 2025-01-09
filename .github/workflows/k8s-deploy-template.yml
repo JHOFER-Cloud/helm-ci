@@ -18,7 +18,10 @@ on:
         required: false
         type: string
         default: "helm/values"
-      ingress_domain:
+      internal_domain:
+        required: true
+        type: string
+      external_domain:
         required: true
         type: string
     secrets:
@@ -39,9 +42,11 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "stage=live" >> $GITHUB_OUTPUT
             echo "env=Production" >> $GITHUB_OUTPUT
+            echo "domain=${{ inputs.external_domain }}" >> $GITHUB_OUTPUT
           else
             echo "stage=dev" >> $GITHUB_OUTPUT
             echo "env=Development" >> $GITHUB_OUTPUT
+            echo "domain=${{ inputs.internal_domain }}" >> $GITHUB_OUTPUT
           fi
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,7 +78,7 @@ jobs:
             --chart ${{ inputs.helm_chart }} \
             --version ${{ inputs.helm_version }} \
             --repo ${{ inputs.helm_repository }} \
-            --domain ${{ inputs.ingress_domain }} \
+            --domain ${{ steps.vars.outputs.domain }}
       - name: Create deployment status
         uses: chrnorm/deployment-action@v2
         if: success()

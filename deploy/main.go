@@ -21,7 +21,7 @@ type Config struct {
 	Chart       string
 	Version     string
 	Repository  string
-	BaseDomain  string
+	Domain      string
 	Namespace   string
 	ReleaseName string
 	IngressHost string
@@ -41,10 +41,10 @@ func parseFlags() *Config {
 	flag.StringVar(&cfg.Chart, "chart", "", "Helm chart (optional)")
 	flag.StringVar(&cfg.Version, "version", "", "Chart version (optional)")
 	flag.StringVar(&cfg.Repository, "repo", "", "Helm repository (optional)")
-	flag.StringVar(&cfg.BaseDomain, "domain", "", "Base domain")
 	flag.StringVar(&cfg.GitHubToken, "github-token", os.Getenv("GITHUB_TOKEN"), "GitHub API token")
 	flag.StringVar(&cfg.GitHubRepo, "github-repo", "", "GitHub repository name")
 	flag.StringVar(&cfg.GitHubOwner, "github-owner", "", "GitHub repository owner")
+	flag.StringVar(&cfg.Domain, "domain", "", "Ingress domain")
 	flag.Parse()
 
 	if cfg.AppName == "" {
@@ -91,14 +91,10 @@ func (c *Config) setupNames() {
 	// For PRs, only modify the release name to include PR number
 	if c.Stage == "dev" && c.PRNumber != "" {
 		c.ReleaseName = fmt.Sprintf("%s-pr-%s", c.AppName, c.PRNumber)
-		c.IngressHost = fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, c.BaseDomain)
+		c.IngressHost = fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, c.Domain)
 	} else {
 		c.ReleaseName = c.AppName
-		if c.Stage == "dev" {
-			c.IngressHost = fmt.Sprintf("%s.dev.%s", c.AppName, c.BaseDomain)
-		} else {
-			c.IngressHost = fmt.Sprintf("%s.%s", c.AppName, c.BaseDomain)
-		}
+		c.IngressHost = fmt.Sprintf("%s.%s", c.AppName, c.Domain)
 	}
 }
 
