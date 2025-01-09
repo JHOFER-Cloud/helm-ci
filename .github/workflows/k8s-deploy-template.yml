@@ -24,6 +24,18 @@ on:
       external_domain:
         required: true
         type: string
+      traefik_dashboard:
+        required: false
+        type: boolean
+        default: false
+      root_ca:
+        required: false
+        type: string
+        default: ""
+      custom_deployment:
+        required: false
+        type: boolean
+        default: false
     secrets:
       KUBE_CONFIG_DEV:
         required: true
@@ -78,14 +90,17 @@ jobs:
             --chart ${{ inputs.helm_chart }} \
             --version ${{ inputs.helm_version }} \
             --repo ${{ inputs.helm_repository }} \
-            --domain ${{ steps.vars.outputs.domain }}
-      - name: Create deployment status
-        uses: chrnorm/deployment-action@v2
-        if: success()
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          environment-url: ${{ steps.deploy.outputs.url }}
-          environment: ${{ steps.vars.outputs.env }}
+            --domain ${{ steps.vars.outputs.domain }} \
+            --traefik-dashboard ${{ inputs.traefik_dashboard }} \
+            --root_ca ${{ inputs.root_ca }} \
+            --custom ${{ inputs.custom_deployment }}
+      # - name: Create deployment status
+      #   uses: chrnorm/deployment-action@v2
+      #   if: success()
+      #   with:
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     environment-url: ${{ steps.deploy.outputs.url }}
+      #     environment: ${{ steps.vars.outputs.env }}
       - name: Cleanup Kubeconfig
         if: always()
         run: rm -f ~/.kube/config
