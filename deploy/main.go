@@ -102,6 +102,23 @@ func (c *Config) Deploy() error {
 }
 
 func (c *Config) deployHelm() error {
+	// Add the Helm repository
+	addRepoCmd := exec.Command("helm", "repo", "add", c.AppName, c.Repository)
+	addRepoCmd.Stdout = os.Stdout
+	addRepoCmd.Stderr = os.Stderr
+	if err := addRepoCmd.Run(); err != nil {
+		return fmt.Errorf("failed to add Helm repository: %v", err)
+	}
+
+	// Update the Helm repository
+	updateRepoCmd := exec.Command("helm", "repo", "update")
+	updateRepoCmd.Stdout = os.Stdout
+	updateRepoCmd.Stderr = os.Stderr
+	if err := updateRepoCmd.Run(); err != nil {
+		return fmt.Errorf("failed to update Helm repository: %v", err)
+	}
+
+	// Deploy the Helm chart
 	args := []string{
 		"upgrade", "--install", c.ReleaseName, c.Chart,
 		"--namespace", c.Namespace,
@@ -111,10 +128,6 @@ func (c *Config) deployHelm() error {
 
 	if c.Version != "" {
 		args = append(args, "--version", c.Version)
-	}
-
-	if c.Repository != "" {
-		args = append(args, "--repo", c.Repository)
 	}
 
 	cmd := exec.Command("helm", args...)
