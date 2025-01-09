@@ -34,7 +34,7 @@ jobs:
     runs-on: self-hosted-ubuntu-24.10
     environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     container:
-      image: ghcr.io/jhofer-cloud/helm-ci:latest
+      image: ghcr.io/jhofer-cloud/helm-ci:dev
     steps:
       - name: Set deployment variables
         id: vars
