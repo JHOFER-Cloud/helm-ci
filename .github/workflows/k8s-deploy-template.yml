@@ -1,5 +1,4 @@
 name: Reusable Kubernetes Deploy
-
 on:
   workflow_call:
     inputs:
@@ -27,14 +26,12 @@ on:
         required: true
       KUBE_CONFIG_LIVE:
         required: true
-
 jobs:
   deploy:
     runs-on: self-hosted-ubuntu-24.10
     environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     container:
       image: ghcr.io/jhofer-cloud/helm-ci:latest
-
     steps:
       - name: Set deployment variables
         id: vars
@@ -46,16 +43,13 @@ jobs:
             echo "stage=dev" >> $GITHUB_OUTPUT
             echo "env=Development" >> $GITHUB_OUTPUT
           fi
-
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Kubernetes Tools
         uses: yokawasa/action-setup-kube-tools@v0.11.2
         with:
           kubectl: "1.27.3"
           helm: "3.12.3"
-
       - name: Setup Kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -65,7 +59,6 @@ jobs:
             echo "${{ secrets.KUBE_CONFIG_DEV }}" > ~/.kube/config
           fi
           chmod 600 ~/.kube/config
-
       - name: Run deployment
         id: deploy
         env:
@@ -81,7 +74,6 @@ jobs:
             --version ${{ inputs.helm_version }} \
             --repo ${{ inputs.helm_repository }} \
             --domain ${{ inputs.ingress_domain }} \
-
       - name: Create deployment status
         uses: chrnorm/deployment-action@v2
         if: success()
@@ -89,7 +81,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           environment-url: ${{ steps.deploy.outputs.url }}
           environment: ${{ steps.vars.outputs.env }}
-
       - name: Cleanup Kubeconfig
         if: always()
         run: rm -f ~/.kube/config
