@@ -23,13 +23,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push latest
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           push: true
-          tags: |
-            ghcr.io/jhofer-cloud/helm-ci:latest
-            ${{ github.ref == 'refs/heads/dev' && 'ghcr.io/jhofer-cloud/helm-ci:dev' || '' }}
+          tags: ghcr.io/jhofer-cloud/helm-ci:latest
+
+      - name: Build and push dev
+        if: github.ref == 'refs/heads/dev'
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/jhofer-cloud/helm-ci:dev
 
       - name: Cleanup old images
         uses: pcasteran/ghcr-cleaning-action@v1
