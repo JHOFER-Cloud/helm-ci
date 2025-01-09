@@ -118,12 +118,20 @@ func (c *Config) deployHelm() error {
 		return fmt.Errorf("failed to update Helm repository: %v", err)
 	}
 
+	// Determine the values files to use
+	valuesFiles := []string{filepath.Join(c.ValuesPath, "common.yml")}
+	stageValuesFile := filepath.Join(c.ValuesPath, fmt.Sprintf("%s.yml", c.Stage))
+	valuesFiles = append(valuesFiles, stageValuesFile)
+
 	// Deploy the Helm chart
 	args := []string{
 		"upgrade", "--install", c.ReleaseName, c.Chart,
 		"--namespace", c.Namespace,
-		"--values", c.ValuesPath,
 		"--set", fmt.Sprintf("ingress.host=%s", c.IngressHost),
+	}
+
+	for _, valuesFile := range valuesFiles {
+		args = append(args, "--values", valuesFile)
 	}
 
 	if c.Version != "" {
