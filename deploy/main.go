@@ -101,7 +101,7 @@ func (c *Config) setupNames() {
 	}
 }
 
-func (c *Config) setupRootCA() error { // FIX: This is not working!!
+func (c *Config) setupRootCA() error {
 	if c.RootCA == "" {
 		return nil
 	}
@@ -134,6 +134,20 @@ func (c *Config) setupRootCA() error { // FIX: This is not working!!
 		}
 	}
 
+	// Create a temporary file to store the certificate data
+	tmpFile, err := os.CreateTemp("", "root-ca-*.crt")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	if _, err := tmpFile.Write(certData); err != nil {
+		return fmt.Errorf("failed to write to temporary file: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temporary file: %v", err)
+	}
+
 	// Create namespace
 	fmt.Printf("Creating namespace: %s\n", c.Namespace)
 	var nsBuffer bytes.Buffer
@@ -156,7 +170,7 @@ func (c *Config) setupRootCA() error { // FIX: This is not working!!
 	var secretBuffer bytes.Buffer
 	secretCmd := exec.Command("kubectl", "create", "secret", "generic",
 		"custom-root-ca",
-		"--from-literal=ca.crt="+string(certData),
+		"--from-file=ca.crt="+tmpFile.Name(),
 		"-n", c.Namespace,
 		"--dry-run=client",
 		"-o", "yaml")
