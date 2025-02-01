@@ -201,7 +201,7 @@ func (c *Config) getRootCAArgs() []string {
 	var args []string
 
 	if c.RootCA != "" {
-		if c.AppName == "traefik" {
+		if strings.Contains(c.AppName, "traefik") {
 			args = append(args,
 				"--set", "additionalArguments[0]=--serverstransport.rootcas=/usr/local/share/ca-certificates/ca.crt",
 				"--set", "additionalVolumes[0].name=custom-root-ca",
@@ -262,7 +262,7 @@ func (c *Config) deployHelm() error {
 	}
 
 	// Add Traefik dashboard args if applicable
-	if c.AppName == "traefik" {
+	if strings.Contains(c.AppName, "traefik") {
 		args = append(args, c.getTraefikDashboardArgs()...)
 	}
 
