@@ -94,13 +94,25 @@ jobs:
             --traefik-dashboard ${{ inputs.traefik_dashboard }} \
             --root_ca ${{ inputs.root_ca }} \
             --custom ${{ inputs.custom_deployment }}
-      # - name: Create deployment status
-      #   uses: chrnorm/deployment-action@v2
-      #   if: success()
-      #   with:
-      #     token: ${{ secrets.GITHUB_TOKEN }}
-      #     environment-url: ${{ steps.deploy.outputs.url }}
-      #     environment: ${{ steps.vars.outputs.env }}
+      - name: Check domain accessibility ##TODO: Put this in separate test stage
+        run: |
+          if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ]; then
+            domain="${{ inputs.app_name }}-pr-${{ github.event.pull_request.number }}.${{ steps.vars.outputs.domain }}"
+          else
+            domain="${{ inputs.app_name }}.${{ steps.vars.outputs.domain }}"
+          fi
+          response=$(curl -I --silent "$domain")
+          echo "Checking domain: $domain"
+          echo "$response"
+          status_code=$(echo "$response" | grep HTTP | awk '{print $2}')
+          if [ "$status_code" -ge 400 ]; then
+            echo "URL is not accessible. Status code: $status_code"
+            exit 1
+          else
+            echo "url=https://$domain" >> $GITHUB_OUTPUT
+            echo "environment-url=https://$domain" >> $GITHUB_ENV
+            echo "URL is accessible: https://$domain"
+          fi
       - name: Cleanup Kubeconfig
         if: always()
         run: rm -f ~/.kube/config
