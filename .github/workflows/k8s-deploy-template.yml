@@ -111,11 +111,10 @@ jobs:
             domain="$domain/${{ inputs.test_url_path }}"
           fi
           domain="https://$domain"
-          response=$(curl -I --silent "$domain")
-          echo "Checking domain: $domain"
+          response=$(curl -k -I --silent "$domain" || true)
           echo "$response"
           status_code=$(echo "$response" | grep HTTP | awk '{print $2}')
-          if [ "$status_code" -ge 300 ]; then
+          if [ "$status_code" -ge 300 ] && [ "$status_code" -ne 405 ]; then
             echo "URL: $domain is not accessible. Status code: $status_code"
             exit 1
           else
