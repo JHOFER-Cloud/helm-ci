@@ -45,6 +45,7 @@ on:
         required: true
       KUBE_CONFIG_LIVE:
         required: true
+
 jobs:
   deploy:
     runs-on: self-hosted-ubuntu-24.10
@@ -98,7 +99,7 @@ jobs:
             --traefik-dashboard ${{ inputs.traefik_dashboard }} \
             --root_ca ${{ inputs.root_ca }} \
             --custom ${{ inputs.custom_deployment }}
-      - name: Check domain accessibility ##TODO: Put this in separate test stage
+      - name: Check domain accessibility
         id: check_domain
         run: |
           if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ]; then
@@ -109,17 +110,16 @@ jobs:
           if [ -n "${{ inputs.test_url_path }}" ]; then
             domain="$domain/${{ inputs.test_url_path }}"
           fi
+          domain="https://$domain"
           response=$(curl -I --silent "$domain")
           echo "Checking domain: $domain"
           echo "$response"
           status_code=$(echo "$response" | grep HTTP | awk '{print $2}')
           if [ "$status_code" -ge 300 ]; then
-            echo "URL is not accessible. Status code: $status_code"
+            echo "URL: $domain is not accessible. Status code: $status_code"
             exit 1
           else
-            echo "url=https://$domain" >> $GITHUB_OUTPUT
-            echo "environment-url=https://$domain" >> $GITHUB_ENV
-            echo "URL is accessible: https://$domain"
+            echo "URL is accessible: $domain"
           fi
       - name: Cleanup Kubeconfig
         if: always()
