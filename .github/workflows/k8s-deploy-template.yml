@@ -18,10 +18,10 @@ on:
         required: false
         type: string
         default: "helm/values"
-      internal_domain:
+      dev_domain:
         required: true
         type: string
-      external_domain:
+      live_domain:
         required: false
         type: string
       traefik_dashboard:
@@ -59,11 +59,11 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "stage=live" >> $GITHUB_OUTPUT
             echo "env=Production" >> $GITHUB_OUTPUT
-            echo "domain=${{ inputs.external_domain }}" >> $GITHUB_OUTPUT
+            echo "domain=${{ inputs.live_domain }}" >> $GITHUB_OUTPUT
           else
             echo "stage=dev" >> $GITHUB_OUTPUT
             echo "env=Development" >> $GITHUB_OUTPUT
-            echo "domain=${{ inputs.internal_domain }}" >> $GITHUB_OUTPUT
+            echo "domain=${{ inputs.dev_domain }}" >> $GITHUB_OUTPUT
           fi
       - name: Checkout
         uses: actions/checkout@v4
