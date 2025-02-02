@@ -36,6 +36,10 @@ on:
         required: false
         type: boolean
         default: false
+      test_url_path:
+        required: false
+        type: string
+        default: ""
     secrets:
       KUBE_CONFIG_DEV:
         required: true
@@ -95,17 +99,21 @@ jobs:
             --root_ca ${{ inputs.root_ca }} \
             --custom ${{ inputs.custom_deployment }}
       - name: Check domain accessibility ##TODO: Put this in separate test stage
+        id: check_domain
         run: |
           if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ]; then
             domain="${{ inputs.app_name }}-pr-${{ github.event.pull_request.number }}.${{ steps.vars.outputs.domain }}"
           else
             domain="${{ inputs.app_name }}.${{ steps.vars.outputs.domain }}"
           fi
+          if [ -n "${{ inputs.test_url_path }}" ]; then
+            domain="$domain/${{ inputs.test_url_path }}"
+          fi
           response=$(curl -I --silent "$domain")
           echo "Checking domain: $domain"
           echo "$response"
           status_code=$(echo "$response" | grep HTTP | awk '{print $2}')
-          if [ "$status_code" -ge 400 ]; then
+          if [ "$status_code" -ge 300 ]; then
             echo "URL is not accessible. Status code: $status_code"
             exit 1
           else
