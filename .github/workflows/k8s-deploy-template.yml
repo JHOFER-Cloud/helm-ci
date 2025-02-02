@@ -45,12 +45,18 @@ on:
         required: true
       KUBE_CONFIG_LIVE:
         required: true
+
 jobs:
   deploy:
+    # Set up an environment object with dynamic name & URL for “View deployment” link
+    environment:
+      name: ${{ steps.vars.outputs.env }}
+      url: ${{ steps.check_domain.outputs.url }}
+
     runs-on: self-hosted-ubuntu-24.10
-    environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     container:
       image: ghcr.io/jhofer-cloud/helm-ci:dev
+
     steps:
       - name: Set deployment variables
         id: vars
@@ -63,14 +69,16 @@ jobs:
             echo "stage=dev" >> $GITHUB_OUTPUT
             echo "env=Development" >> $GITHUB_OUTPUT
             echo "domain=${{ inputs.internal_domain }}" >> $GITHUB_OUTPUT
-          fi
+
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Kubernetes Tools
         uses: yokawasa/action-setup-kube-tools@v0.11.2
         with:
           kubectl: "1.27.3"
           helm: "3.12.3"
+
       - name: Setup Kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -80,6 +88,7 @@ jobs:
             echo "${{ secrets.KUBE_CONFIG_DEV }}" > ~/.kube/config
           fi
           chmod 600 ~/.kube/config
+
       - name: Run deployment
         id: deploy
         env:
@@ -98,6 +107,7 @@ jobs:
             --traefik-dashboard ${{ inputs.traefik_dashboard }} \
             --root_ca ${{ inputs.root_ca }} \
             --custom ${{ inputs.custom_deployment }}
+
       - name: Check domain accessibility ##TODO: Put this in separate test stage
         id: check_domain
         run: |
@@ -106,21 +116,26 @@ jobs:
           else
             domain="${{ inputs.app_name }}.${{ steps.vars.outputs.domain }}"
           fi
+
           if [ -n "${{ inputs.test_url_path }}" ]; then
             domain="$domain/${{ inputs.test_url_path }}"
           fi
+
           response=$(curl -I --silent "$domain")
           echo "Checking domain: $domain"
           echo "$response"
+
           status_code=$(echo "$response" | grep HTTP | awk '{print $2}')
-          if [ "$status_code" -ge 300 ]; then
+          if [ "$status_code" -ge 400 ]; then
             echo "URL is not accessible. Status code: $status_code"
             exit 1
           else
+            # Set the output variable “url” to be used by the environment block
             echo "url=https://$domain" >> $GITHUB_OUTPUT
             echo "environment-url=https://$domain" >> $GITHUB_ENV
             echo "URL is accessible: https://$domain"
-          fi
+            echo "URL is accessible: https://$domain" >> $GITHUB_STEP_SUMMARY
+
       - name: Cleanup Kubeconfig
         if: always()
         run: rm -f ~/.kube/config
