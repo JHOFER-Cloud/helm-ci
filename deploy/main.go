@@ -200,6 +200,101 @@ func (c *Config) Deploy() error {
 	return c.deployHelm()
 }
 
+func (c *Config) getDiff(args []string, isHelm bool) error {
+	if isHelm {
+		// Get current state
+		currentCmd := exec.Command("helm", "get", "manifest", c.ReleaseName, "-n", c.Namespace)
+		current, err := currentCmd.Output()
+		if err != nil {
+			// If release doesn't exist, show what would be installed
+			fmt.Println("No existing release found. Showing what would be installed:")
+
+			// Add --dry-run flag to show what would be installed
+			dryRunArgs := append(args, "--dry-run")
+			cmd := exec.Command("helm", dryRunArgs...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			return cmd.Run()
+		}
+
+		// Get proposed state
+		dryRunArgs := append(args, "--dry-run")
+		proposedCmd := exec.Command("helm", dryRunArgs...)
+		proposed, err := proposedCmd.Output()
+		if err != nil {
+			return fmt.Errorf("failed to get proposed state: %v", err)
+		}
+
+		// Create diff using kubectl diff
+		return c.showResourceDiff(current, proposed)
+	} else {
+		// For kubectl, use kubectl diff directly
+		for _, manifest := range args {
+			cmd := exec.Command("kubectl", "diff", "-f", manifest, "-n", c.Namespace)
+			output, err := cmd.Output()
+			if err != nil {
+				// Exit code 1 means differences were found, which is expected
+				if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
+					return fmt.Errorf("failed to get diff for %s: %v", manifest, err)
+				}
+			}
+
+			if len(output) == 0 {
+				// If no diff, show what would be applied
+				fmt.Printf("\nNo existing resources found for %s. Showing what would be applied:\n", manifest)
+				showCmd := exec.Command("kubectl", "apply", "-f", manifest, "-n", c.Namespace, "--dry-run=client", "-o", "yaml")
+				showCmd.Stdout = os.Stdout
+				showCmd.Stderr = os.Stderr
+				if err := showCmd.Run(); err != nil {
+					return fmt.Errorf("failed to show resources for %s: %v", manifest, err)
+				}
+			} else {
+				fmt.Printf("\nDiff for %s:\n", manifest)
+				fmt.Println(string(output))
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Config) showResourceDiff(current, proposed []byte) error {
+	// Create temporary files for diff
+	currentFile, err := os.CreateTemp("", "current-*.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(currentFile.Name())
+
+	proposedFile, err := os.CreateTemp("", "proposed-*.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(proposedFile.Name())
+
+	// Write resources to temp files
+	if err := os.WriteFile(currentFile.Name(), current, 0644); err != nil {
+		return fmt.Errorf("failed to write current state: %v", err)
+	}
+	if err := os.WriteFile(proposedFile.Name(), proposed, 0644); err != nil {
+		return fmt.Errorf("failed to write proposed state: %v", err)
+	}
+
+	// Use kubectl diff to show differences
+	diffCmd := exec.Command("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
+	diffCmd.Stdout = os.Stdout
+	diffCmd.Stderr = os.Stderr
+
+	err = diffCmd.Run()
+	if err != nil {
+		// Exit code 1 means differences were found, which is expected
+		if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
+			return fmt.Errorf("failed to generate diff: %v", err)
+		}
+	}
+
+	return nil
+}
+
 func (c *Config) getTraefikDashboardArgs() []string {
 	var args []string
 
@@ -213,16 +308,18 @@ func (c *Config) getTraefikDashboardArgs() []string {
 	return args
 }
 
+// FIX: Mounting CA file not working (secret gets created)
+// spec.template.spec.containers[0].volumeMounts[2].mountPath: Required value
 func (c *Config) getRootCAArgs() []string {
 	var args []string
 
 	if c.RootCA != "" {
 		args = append(args,
-			"--set", "volumes[+].name=custom-root-ca",
-			"--set", "volumes[+].secret.secretName=custom-root-ca",
-			"--set", "volumeMounts[+].name=custom-root-ca",
-			"--set", "volumeMounts[+].mountPath=/etc/ssl/certs",
-			"--set", "volumeMounts[+].subPath=ca.crt",
+			"--set", "volumes[0].name=custom-root-ca",
+			"--set", "volumes[0].secret.secretName=custom-root-ca",
+			"--set", "volumeMounts[0].name=custom-root-ca",
+			"--set", "volumeMounts[0].mountPath=/etc/ssl/certs",
+			"--set", "volumeMounts[0].subPath=ca.crt",
 		)
 	}
 
@@ -235,7 +332,6 @@ func (c *Config) deployHelm() error {
 	}
 
 	var args []string
-	// Start with the basic command
 	args = append(args, "upgrade", "--install", c.ReleaseName, c.Chart)
 	args = append(args, "--namespace", c.Namespace, "--create-namespace")
 
@@ -274,6 +370,13 @@ func (c *Config) deployHelm() error {
 	// Add root CA args
 	args = append(args, c.getRootCAArgs()...)
 
+	// Show diff first
+	fmt.Println("Showing differences:")
+	if err := c.getDiff(args, true); err != nil {
+		return err
+	}
+
+	// Proceed with actual deployment
 	cmd := exec.Command("helm", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -287,6 +390,13 @@ func (c *Config) deployCustom() error {
 		return fmt.Errorf("failed to find manifests: %v", err)
 	}
 
+	// Show diff first
+	fmt.Println("Showing differences:")
+	if err := c.getDiff(manifests, false); err != nil {
+		return err
+	}
+
+	// Proceed with actual deployment
 	for _, manifest := range manifests {
 		cmd := exec.Command("kubectl", "apply", "-f", manifest, "-n", c.Namespace)
 		cmd.Stdout = os.Stdout
