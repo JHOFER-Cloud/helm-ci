@@ -33,6 +33,7 @@ type Config struct {
 	Domain           string
 	TraefikDashboard bool
 	RootCA           string
+	PRDeployments    bool
 }
 
 func parseFlags() *Config {
@@ -53,6 +54,7 @@ func parseFlags() *Config {
 	flag.BoolVar(&cfg.Custom, "custom", false, "Custom Kubernetes deployment")
 	flag.BoolVar(&cfg.TraefikDashboard, "traefik-dashboard", false, "Deploy Traefik dashboard")
 	flag.StringVar(&cfg.RootCA, "root-ca", "", "Path to root CA certificate")
+	flag.BoolVar(&cfg.PRDeployments, "pr-deployments", true, "Enable PR deployments")
 	flag.Parse()
 
 	if cfg.AppName == "" {
@@ -92,7 +94,7 @@ func (c *Config) setupNames() {
 		c.Namespace = c.AppName + "-dev"
 	}
 
-	if c.Stage == "dev" && c.PRNumber != "" {
+	if c.Stage == "dev" && c.PRNumber != "" && c.PRDeployments {
 		c.ReleaseName = fmt.Sprintf("%s-pr-%s", c.AppName, c.PRNumber)
 		c.IngressHost = fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, c.Domain)
 	} else {

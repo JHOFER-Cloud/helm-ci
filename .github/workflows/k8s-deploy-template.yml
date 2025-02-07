@@ -14,6 +14,10 @@ on:
       helm_version:
         required: false
         type: string
+      pr_deployments:
+        required: false
+        type: boolean
+        default: true
       values_path:
         required: false
         type: string
@@ -96,9 +100,10 @@ jobs:
             --version ${{ inputs.helm_version }} \
             --repo ${{ inputs.helm_repository }} \
             --domain ${{ steps.vars.outputs.domain }} \
-            --traefik-dashboard ${{ inputs.traefik_dashboard }} \
-            --root_ca ${{ inputs.root_ca }} \
-            --custom ${{ inputs.custom_deployment }}
+            --traefik-dashboard=${{ inputs.traefik_dashboard }} \
+            --root-ca ${{ inputs.root_ca }} \
+            --pr-deployments=${{ inputs.pr_deployments }} \
+            --custom=${{ inputs.custom_deployment }}
       - name: Check domain accessibility
         id: check_domain
         run: |
