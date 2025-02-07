@@ -257,26 +257,7 @@ func (c *Config) getDiff(args []string, isHelm bool) error {
 	return nil
 }
 
-func cleanYAML(yamlContent []byte) ([]byte, error) {
-	lines := strings.Split(string(yamlContent), "\n")
-	var cleanedLines []string
-	for _, line := range lines {
-		if strings.Contains(line, "automountServiceAccountToken: false") {
-			cleanedLines = append(cleanedLines, "  "+line)
-		} else {
-			cleanedLines = append(cleanedLines, line)
-		}
-	}
-	return []byte(strings.Join(cleanedLines, "\n")), nil
-}
-
 func (c *Config) showResourceDiff(current, proposed []byte) error {
-	// Clean up the YAML
-	cleanedProposed, err := cleanYAML(proposed)
-	if err != nil {
-		return fmt.Errorf("failed to clean proposed YAML: %v", err)
-	}
-
 	// Create temporary files for diff
 	currentFile, err := os.CreateTemp("", "current-*.yaml")
 	if err != nil {
@@ -294,7 +275,7 @@ func (c *Config) showResourceDiff(current, proposed []byte) error {
 	if err := os.WriteFile(currentFile.Name(), current, 0644); err != nil {
 		return fmt.Errorf("failed to write current state: %v", err)
 	}
-	if err := os.WriteFile(proposedFile.Name(), cleanedProposed, 0644); err != nil {
+	if err := os.WriteFile(proposedFile.Name(), proposed, 0644); err != nil {
 		return fmt.Errorf("failed to write proposed state: %v", err)
 	}
 
@@ -303,7 +284,7 @@ func (c *Config) showResourceDiff(current, proposed []byte) error {
 	fmt.Println(string(current))
 
 	fmt.Println("Proposed YAML:")
-	fmt.Println(string(cleanedProposed))
+	fmt.Println(string(proposed))
 
 	// Use kubectl diff to show differences
 	diffCmd := exec.Command("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
