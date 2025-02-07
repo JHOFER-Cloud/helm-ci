@@ -2,7 +2,7 @@
 
 ## Usage
 
-README IS OUTDATET, LOOK INTO EXAMPLES!!
+README IS OUTDATED, LOOK INTO EXAMPLES!!
 
 Examples: 
 - [helm-traefik](https://github.com/JHOFER-Cloud/helm-traefik)
