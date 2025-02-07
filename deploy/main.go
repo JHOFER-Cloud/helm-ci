@@ -316,10 +316,9 @@ func (c *Config) getRootCAArgs() []string {
 	if c.RootCA != "" {
 		args = append(args,
 			"--set", "volumes[0].name=custom-root-ca",
-			"--set", "volumes[0].secret.secretName=custom-root-ca",
-			"--set", "volumeMounts[0].name=custom-root-ca",
-			"--set", "volumeMounts[0].mountPath=/etc/ssl/certs",
-			"--set", "volumeMounts[0].subPath=ca.crt",
+			"--set", "volumes[0].secretName=custom-root-ca",
+			"--set", "volumes[0].mountPath=/etc/ssl/certs",
+			"--set", "volumes[0].subPath=ca.crt",
 		)
 	}
 
