@@ -97,10 +97,14 @@ func (c *Config) setupNames() {
 
 	if c.Stage == "dev" && c.PRNumber != "" && c.PRDeployments {
 		c.ReleaseName = fmt.Sprintf("%s-pr-%s", c.AppName, c.PRNumber)
-		c.IngressHost = fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, c.Domain)
+		if c.Domain != "" {
+			c.IngressHost = fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, c.Domain)
+		}
 	} else {
 		c.ReleaseName = c.AppName
-		c.IngressHost = fmt.Sprintf("%s.%s", c.AppName, c.Domain)
+		if c.Domain != "" {
+			c.IngressHost = fmt.Sprintf("%s.%s", c.AppName, c.Domain)
+		}
 	}
 }
 
@@ -383,7 +387,9 @@ func (c *Config) deployHelm() error {
 		return fmt.Errorf("failed to update Helm repository: %v", err)
 	}
 
-	args = append(args, "--set", fmt.Sprintf("ingress.host=%s", c.IngressHost))
+	if c.Domain != "" {
+		args = append(args, "--set", fmt.Sprintf("ingress.host=%s", c.IngressHost))
+	}
 
 	// Add values files
 	commonValuesFile := filepath.Join(c.ValuesPath, "common.yml")

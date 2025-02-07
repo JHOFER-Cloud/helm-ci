@@ -23,7 +23,7 @@ on:
         type: string
         default: "helm/values"
       dev_domain:
-        required: true
+        required: false
         type: string
       live_domain:
         required: false
@@ -106,6 +106,7 @@ jobs:
             --custom=${{ inputs.custom_deployment }}
       - name: Check domain accessibility
         id: check_domain
+        if: ${{ steps.vars.outputs.domain != '' }}
         run: |
           if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ] && [ "${{ inputs.pr_deployments }}" == "true" ]; then
             domain="${{ inputs.app_name }}-pr-${{ github.event.pull_request.number }}.${{ steps.vars.outputs.domain }}"
