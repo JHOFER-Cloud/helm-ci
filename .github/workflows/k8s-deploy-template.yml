@@ -1,5 +1,4 @@
 name: Reusable Kubernetes Deploy
-
 on:
   workflow_call:
     inputs:
@@ -15,13 +14,36 @@ on:
       helm_version:
         required: false
         type: string
+      pr_deployments:
+        required: false
+        type: boolean
+        default: true
       values_path:
         required: false
         type: string
         default: "helm/values"
-      ingress_domain:
+      dev_domain:
         required: true
         type: string
+      live_domain:
+        required: false
+        type: string
+      traefik_dashboard:
+        required: false
+        type: boolean
+        default: false
+      root_ca:
+        required: false
+        type: string
+        default: ""
+      custom_deployment:
+        required: false
+        type: boolean
+        default: false
+      test_url_path:
+        required: false
+        type: string
+        default: ""
     secrets:
       KUBE_CONFIG_DEV:
         required: true
@@ -33,8 +55,7 @@ jobs:
     runs-on: self-hosted-ubuntu-24.10
     environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     container:
-      image: ghcr.io/jhofer-cloud/helm-ci:latest
-
+      image: ghcr.io/jhofer-cloud/helm-ci:dev
     steps:
       - name: Set deployment variables
         id: vars
@@ -42,20 +63,19 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "stage=live" >> $GITHUB_OUTPUT
             echo "env=Production" >> $GITHUB_OUTPUT
+            echo "domain=${{ inputs.live_domain }}" >> $GITHUB_OUTPUT
           else
             echo "stage=dev" >> $GITHUB_OUTPUT
             echo "env=Development" >> $GITHUB_OUTPUT
+            echo "domain=${{ inputs.dev_domain }}" >> $GITHUB_OUTPUT
           fi
-
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Kubernetes Tools
         uses: yokawasa/action-setup-kube-tools@v0.11.2
         with:
           kubectl: "1.27.3"
           helm: "3.12.3"
-
       - name: Setup Kubeconfig
         run: |
           mkdir -p ~/.kube
@@ -65,7 +85,6 @@ jobs:
             echo "${{ secrets.KUBE_CONFIG_DEV }}" > ~/.kube/config
           fi
           chmod 600 ~/.kube/config
-
       - name: Run deployment
         id: deploy
         env:
@@ -73,23 +92,39 @@ jobs:
         run: |
           deploy \
             --stage ${{ steps.vars.outputs.stage }} \
-            --app ${{ inputs.app_name }} \
-            --env ${{ steps.vars.outputs.env }} \
-            --pr ${{ github.event.pull_request.number }} \
-            --values ${{ inputs.values_path }} \
-            --chart ${{ inputs.helm_chart }} \
-            --version ${{ inputs.helm_version }} \
-            --repo ${{ inputs.helm_repository }} \
-            --domain ${{ inputs.ingress_domain }} \
-
-      - name: Create deployment status
-        uses: chrnorm/deployment-action@v2
-        if: success()
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          environment-url: ${{ steps.deploy.outputs.url }}
-          environment: ${{ steps.vars.outputs.env }}
-
+            --app=${{ inputs.app_name }} \
+            --env=${{ steps.vars.outputs.env }} \
+            --pr=${{ github.event.pull_request.number }} \
+            --values=${{ inputs.values_path }} \
+            --chart=${{ inputs.helm_chart }} \
+            --version=${{ inputs.helm_version }} \
+            --repo=${{ inputs.helm_repository }} \
+            --domain=${{ steps.vars.outputs.domain }} \
+            --traefik-dashboard=${{ inputs.traefik_dashboard }} \
+            --root-ca=${{ inputs.root_ca }} \
+            --pr-deployments=${{ inputs.pr_deployments }} \
+            --custom=${{ inputs.custom_deployment }}
+      - name: Check domain accessibility
+        id: check_domain
+        run: |
+          if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ] && [ "${{ inputs.pr_deployments }}" == "true" ]; then
+            domain="${{ inputs.app_name }}-pr-${{ github.event.pull_request.number }}.${{ steps.vars.outputs.domain }}"
+          else
+            domain="${{ inputs.app_name }}.${{ steps.vars.outputs.domain }}"
+          fi
+          if [ -n "${{ inputs.test_url_path }}" ]; then
+            domain="$domain/${{ inputs.test_url_path }}"
+          fi
+          domain="https://$domain"
+          response=$(curl -k -I --silent "$domain" || true)
+          echo "$response"
+          status_code=$(echo "$response" | grep HTTP | awk '{print $2}')
+          if [ "$status_code" -ge 300 ] && [ "$status_code" -ne 405 ]; then
+            echo "URL: $domain is not accessible. Status code: $status_code"
+            exit 1
+          else
+            echo "URL is accessible: $domain"
+          fi
       - name: Cleanup Kubeconfig
         if: always()
         run: rm -f ~/.kube/config

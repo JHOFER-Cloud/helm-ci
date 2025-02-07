@@ -2,7 +2,9 @@ name: Build and Push Container
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - dev
 
 jobs:
   build:
@@ -21,17 +23,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push latest
+        if: github.ref == 'refs/heads/main'
         uses: docker/build-push-action@v6
         with:
           push: true
           tags: ghcr.io/jhofer-cloud/helm-ci:latest
 
-      - name: Cleanup old images
-        uses: pcasteran/ghcr-cleaning-action@v1
+      - name: Build and push dev
+        if: github.ref == 'refs/heads/dev'
+        uses: docker/build-push-action@v6
         with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          package: helm-ci
-          repository: jhofer-cloud/helm-ci
-          dry-run: false
+          push: true
+          tags: ghcr.io/jhofer-cloud/helm-ci:dev
+
+      ## FIX: Cleanup broken
+      # - name: Cleanup old images
+      #   uses: pcasteran/ghcr-cleaning-action@v1
+      #   with:
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+      #     package: helm-ci
+      #     repository: jhofer-cloud/helm-ci
+      #     dry-run: false

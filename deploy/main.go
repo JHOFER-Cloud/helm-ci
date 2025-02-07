@@ -1,33 +1,40 @@
 package main
 
 import (
+	"bytes"
+	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
-	"text/template"
 )
 
 type Config struct {
-	Stage       string
-	AppName     string
-	Environment string
-	PRNumber    string
-	ValuesPath  string
-	Custom      bool
-	Chart       string
-	Version     string
-	Repository  string
-	BaseDomain  string
-	Namespace   string
-	ReleaseName string
-	IngressHost string
-	GitHubToken string
-	GitHubRepo  string
-	GitHubOwner string
+	Stage            string
+	AppName          string
+	Environment      string
+	PRNumber         string
+	ValuesPath       string
+	Custom           bool
+	Chart            string
+	Version          string
+	Repository       string
+	Namespace        string
+	ReleaseName      string
+	IngressHost      string
+	GitHubToken      string
+	GitHubRepo       string
+	GitHubOwner      string
+	Domain           string
+	TraefikDashboard bool
+	RootCA           string
+	PRDeployments    bool
+	DEBUG            bool
 }
 
 func parseFlags() *Config {
@@ -41,10 +48,14 @@ func parseFlags() *Config {
 	flag.StringVar(&cfg.Chart, "chart", "", "Helm chart (optional)")
 	flag.StringVar(&cfg.Version, "version", "", "Chart version (optional)")
 	flag.StringVar(&cfg.Repository, "repo", "", "Helm repository (optional)")
-	flag.StringVar(&cfg.BaseDomain, "domain", "", "Base domain")
 	flag.StringVar(&cfg.GitHubToken, "github-token", os.Getenv("GITHUB_TOKEN"), "GitHub API token")
 	flag.StringVar(&cfg.GitHubRepo, "github-repo", "", "GitHub repository name")
 	flag.StringVar(&cfg.GitHubOwner, "github-owner", "", "GitHub repository owner")
+	flag.StringVar(&cfg.Domain, "domain", "", "Ingress domain")
+	flag.BoolVar(&cfg.Custom, "custom", false, "Custom Kubernetes deployment")
+	flag.BoolVar(&cfg.TraefikDashboard, "traefik-dashboard", false, "Deploy Traefik dashboard")
+	flag.StringVar(&cfg.RootCA, "root-ca", "", "Path to root CA certificate")
+	flag.BoolVar(&cfg.PRDeployments, "pr-deployments", true, "Enable PR deployments")
 	flag.Parse()
 
 	if cfg.AppName == "" {
@@ -62,9 +73,6 @@ func parseFlags() *Config {
 		os.Exit(1)
 	}
 
-	// If chart and repository are provided, it's not a custom deployment
-	cfg.Custom = cfg.Chart == "" || cfg.Repository == ""
-
 	return cfg
 }
 
@@ -81,217 +89,360 @@ func (c *Config) PrintConfig() {
 }
 
 func (c *Config) setupNames() {
-	// Set namespace based on stage
 	if c.Stage == "live" {
 		c.Namespace = c.AppName
 	} else {
 		c.Namespace = c.AppName + "-dev"
 	}
 
-	// For PRs, only modify the release name to include PR number
-	if c.Stage == "dev" && c.PRNumber != "" {
+	if c.Stage == "dev" && c.PRNumber != "" && c.PRDeployments {
 		c.ReleaseName = fmt.Sprintf("%s-pr-%s", c.AppName, c.PRNumber)
-		c.IngressHost = fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, c.BaseDomain)
+		c.IngressHost = fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, c.Domain)
 	} else {
 		c.ReleaseName = c.AppName
-		if c.Stage == "dev" {
-			c.IngressHost = fmt.Sprintf("%s.dev.%s", c.AppName, c.BaseDomain)
-		} else {
-			c.IngressHost = fmt.Sprintf("%s.%s", c.AppName, c.BaseDomain)
-		}
+		c.IngressHost = fmt.Sprintf("%s.%s", c.AppName, c.Domain)
 	}
 }
 
-func (c *Config) ensureNamespace() error {
-	cmd := exec.Command("kubectl", "create", "namespace", c.Namespace, "--dry-run=client", "-o", "yaml")
-	createOutput, err := cmd.Output()
-	if err != nil {
-		return fmt.Errorf("error creating namespace yaml: %v", err)
+func (c *Config) setupRootCA() error {
+	if c.RootCA == "" {
+		return nil
 	}
 
-	cmd = exec.Command("kubectl", "apply", "-f", "-")
-	cmd.Stdin = strings.NewReader(string(createOutput))
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error applying namespace: %v", err)
-	}
+	fmt.Printf("Setting up Root CA from: %s\n", c.RootCA)
 
-	return nil
-}
+	var certData []byte
+	var err error
 
-type ValuesTemplateData struct {
-	Stage       string
-	AppName     string
-	Environment string
-	IngressHost string
-}
-
-func (c *Config) processValues() error {
-	data := ValuesTemplateData{
-		Stage:       c.Stage,
-		AppName:     c.AppName,
-		Environment: c.Environment,
-		IngressHost: c.IngressHost,
-	}
-
-	if err := os.MkdirAll("processed-values", 0755); err != nil {
-		return fmt.Errorf("error creating processed-values directory: %v", err)
-	}
-
-	// Process common values
-	commonPath := filepath.Join(c.ValuesPath, "common.yml")
-	if _, err := os.Stat(commonPath); err == nil {
-		if err := processTemplate(commonPath, "processed-values/common.yml", data); err != nil {
-			return fmt.Errorf("error processing common values: %v", err)
+	// Check if RootCA is a URL
+	if strings.HasPrefix(c.RootCA, "http://") || strings.HasPrefix(c.RootCA, "https://") {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
-	}
-
-	// Process stage-specific values
-	stagePath := filepath.Join(c.ValuesPath, fmt.Sprintf("%s.yml", c.Stage))
-	if _, err := os.Stat(stagePath); err == nil {
-		if err := processTemplate(stagePath, fmt.Sprintf("processed-values/%s.yml", c.Stage), data); err != nil {
-			return fmt.Errorf("error processing stage values: %v", err)
+		client := &http.Client{Transport: tr}
+		resp, err := client.Get(c.RootCA)
+		if err != nil {
+			return fmt.Errorf("failed to download root CA: %v", err)
 		}
-	}
+		defer resp.Body.Close()
 
-	return nil
-}
-
-func processTemplate(inputPath, outputPath string, data ValuesTemplateData) error {
-	content, err := os.ReadFile(inputPath)
-	if err != nil {
-		return fmt.Errorf("error reading template file: %v", err)
-	}
-
-	tmpl, err := template.New(filepath.Base(inputPath)).Parse(string(content))
-	if err != nil {
-		return fmt.Errorf("error parsing template: %v", err)
-	}
-
-	outputFile, err := os.Create(outputPath)
-	if err != nil {
-		return fmt.Errorf("error creating output file: %v", err)
-	}
-	defer outputFile.Close()
-
-	if err := tmpl.Execute(outputFile, data); err != nil {
-		return fmt.Errorf("error executing template: %v", err)
-	}
-
-	return nil
-}
-
-func (c *Config) deployHelm() error {
-	c.PrintConfig()
-
-	if !c.Custom && (c.Chart == "" || c.Repository == "") {
-		return fmt.Errorf("chart and repository required when not using custom values")
-	}
-
-	if !c.Custom {
-		// Add and update helm repo
-		repoName := strings.Split(c.Chart, "/")[0]
-		cmd := exec.Command("helm", "repo", "add", repoName, c.Repository)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("error adding helm repo: %v", err)
+		certData, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("failed to read root CA from URL: %v", err)
 		}
-
-		cmd = exec.Command("helm", "repo", "update")
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("error updating helm repos: %v", err)
-		}
-	}
-
-	// Create helm upgrade command without --wait first
-	args := []string{
-		"upgrade", "--install",
-		c.ReleaseName,
-	}
-
-	if c.Custom {
-		args = append(args, ".")
 	} else {
-		args = append(args, c.Chart)
+		certData, err = os.ReadFile(c.RootCA)
+		if err != nil {
+			return fmt.Errorf("failed to read root CA file: %v", err)
+		}
 	}
 
-	args = append(args,
-		"--namespace", c.Namespace,
-		"--create-namespace",
-	)
-
-	if !c.Custom && c.Version != "" {
-		args = append(args, "--version", c.Version)
-	}
-
-	// Add values files
-	defaultValues := fmt.Sprintf(`
-ingress:
-  enabled: true
-  annotations:
-    kubernetes.io/ingress.class: traefik
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.middlewares: traefik-strip-prefix@kubernetescrd
-  hosts:
-    - host: %s
-      paths:
-        - path: /
-          pathType: Prefix
-`, c.IngressHost)
-
-	tmpFile, err := os.CreateTemp("", "default-values-*.yaml")
+	// Create a temporary file to store the certificate data
+	tmpFile, err := os.CreateTemp("", "root-ca-*.crt")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create temporary file: %v", err)
 	}
 	defer os.Remove(tmpFile.Name())
 
-	if err := os.WriteFile(tmpFile.Name(), []byte(defaultValues), 0644); err != nil {
+	if _, err := tmpFile.Write(certData); err != nil {
+		return fmt.Errorf("failed to write to temporary file: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return fmt.Errorf("failed to close temporary file: %v", err)
+	}
+
+	// Create namespace
+	fmt.Printf("Creating namespace: %s\n", c.Namespace)
+	var nsBuffer bytes.Buffer
+	createNsCmd := exec.Command("kubectl", "create", "namespace", c.Namespace, "--dry-run=client", "-o", "yaml")
+	createNsCmd.Stdout = &nsBuffer
+
+	if err := createNsCmd.Run(); err != nil {
+		return fmt.Errorf("failed to create namespace yaml: %v", err)
+	}
+
+	applyNsCmd := exec.Command("kubectl", "apply", "-f", "-")
+	applyNsCmd.Stdin = bytes.NewReader(nsBuffer.Bytes())
+
+	if err := applyNsCmd.Run(); err != nil {
+		return fmt.Errorf("failed to apply namespace: %v", err)
+	}
+
+	// Create secret
+	fmt.Printf("Creating CA secret in namespace: %s\n", c.Namespace)
+	var secretBuffer bytes.Buffer
+	secretCmd := exec.Command("kubectl", "create", "secret", "generic",
+		"custom-root-ca",
+		"--from-file=ca.crt="+tmpFile.Name(),
+		"-n", c.Namespace,
+		"--dry-run=client",
+		"-o", "yaml")
+	secretCmd.Stdout = &secretBuffer
+
+	if err := secretCmd.Run(); err != nil {
+		return fmt.Errorf("failed to create secret yaml: %v", err)
+	}
+
+	applySecretCmd := exec.Command("kubectl", "apply", "-f", "-")
+	applySecretCmd.Stdin = bytes.NewReader(secretBuffer.Bytes())
+
+	if err := applySecretCmd.Run(); err != nil {
+		return fmt.Errorf("failed to apply secret: %v", err)
+	}
+
+	fmt.Println("Root CA setup completed successfully")
+	return nil
+}
+
+func (c *Config) Deploy() error {
+	if c.Custom {
+		return c.deployCustom()
+	}
+	return c.deployHelm()
+}
+
+func extractYAMLContent(helmOutput []byte) ([]byte, error) {
+	lines := strings.Split(string(helmOutput), "\n")
+	var yamlLines []string
+	inManifest := false
+
+	for _, line := range lines {
+		if strings.HasPrefix(line, "MANIFEST:") {
+			inManifest = true
+			continue
+		}
+		if inManifest {
+			if strings.Contains(line, "***") {
+				continue
+			}
+			if strings.HasPrefix(line, "NOTES:") {
+				break
+			}
+			yamlLines = append(yamlLines, line)
+		}
+	}
+
+	return []byte(strings.Join(yamlLines, "\n")), nil
+}
+
+func (c *Config) getDiff(args []string, isHelm bool) error {
+	if isHelm {
+		// Get current state
+		currentCmd := exec.Command("helm", "get", "manifest", c.ReleaseName, "-n", c.Namespace)
+		current, err := currentCmd.Output()
+		if err != nil {
+			// If release doesn't exist, show what would be installed
+			fmt.Println("No existing release found. Showing what would be installed:")
+
+			// Add --dry-run flag to show what would be installed
+			dryRunArgs := append(args, "--dry-run")
+			cmd := exec.Command("helm", dryRunArgs...)
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			return cmd.Run()
+		}
+
+		// Get proposed state
+		dryRunArgs := append(args, "--dry-run")
+		proposedCmd := exec.Command("helm", dryRunArgs...)
+		proposed, err := proposedCmd.Output()
+		if err != nil {
+			return fmt.Errorf("failed to get proposed state: %v", err)
+		}
+
+		// Extract YAML content from Helm output
+		proposedYAML, err := extractYAMLContent(proposed)
+		if err != nil {
+			return fmt.Errorf("failed to extract YAML content: %v", err)
+		}
+
+		// Create diff using kubectl diff
+		return c.showResourceDiff(current, proposedYAML)
+	} else {
+		// For kubectl, use kubectl diff directly
+		for _, manifest := range args {
+			cmd := exec.Command("kubectl", "diff", "-f", manifest, "-n", c.Namespace)
+			output, err := cmd.Output()
+			if err != nil {
+				// Exit code 1 means differences were found, which is expected
+				if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
+					return fmt.Errorf("failed to get diff for %s: %v", manifest, err)
+				}
+			}
+
+			if len(output) == 0 {
+				// If no diff, show what would be applied
+				fmt.Printf("\nNo existing resources found for %s. Showing what would be applied:\n", manifest)
+				showCmd := exec.Command("kubectl", "apply", "-f", manifest, "-n", c.Namespace, "--dry-run=client", "-o", "yaml")
+				showCmd.Stdout = os.Stdout
+				showCmd.Stderr = os.Stderr
+				if err := showCmd.Run(); err != nil {
+					return fmt.Errorf("failed to show resources for %s: %v", manifest, err)
+				}
+			} else {
+				fmt.Printf("\nDiff for %s:\n", manifest)
+				fmt.Println(string(output))
+			}
+		}
+	}
+	return nil
+}
+
+func (c *Config) showResourceDiff(current, proposed []byte) error {
+	// Create temporary files for diff
+	currentFile, err := os.CreateTemp("", "current-*.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(currentFile.Name())
+
+	proposedFile, err := os.CreateTemp("", "proposed-*.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(proposedFile.Name())
+
+	// Write resources to temp files
+	if err := os.WriteFile(currentFile.Name(), current, 0644); err != nil {
+		return fmt.Errorf("failed to write current state: %v", err)
+	}
+	if err := os.WriteFile(proposedFile.Name(), proposed, 0644); err != nil {
+		return fmt.Errorf("failed to write proposed state: %v", err)
+	}
+
+	if c.DEBUG {
+		// Print the contents of the files for debugging
+		fmt.Println("Current YAML:")
+		fmt.Println(string(current))
+
+		fmt.Println("Proposed YAML:")
+		fmt.Println(string(proposed))
+	}
+
+	// Use diff to show differences with color
+	diffCmd := exec.Command("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
+	diffCmd.Stdout = os.Stdout
+	diffCmd.Stderr = os.Stderr
+
+	err = diffCmd.Run()
+	if err != nil {
+		// Exit code 1 means differences were found, which is expected
+		if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
+			return fmt.Errorf("failed to generate diff: %v", err)
+		}
+	}
+
+	return nil
+}
+
+func (c *Config) getTraefikDashboardArgs() []string {
+	var args []string
+
+	if c.TraefikDashboard {
+		args = append(args,
+			"--set", fmt.Sprintf("ingressRoute.dashboard.matchRule=Host(`%s`)", c.IngressHost),
+			"--set", "ingressRoute.dashboard.entryPoints[0]=websecure",
+		)
+	}
+
+	return args
+}
+
+// FIX: Mounting CA file not working (secret gets created)
+// spec.template.spec.containers[0].volumeMounts[2].mountPath: Required value
+func (c *Config) getRootCAArgs() []string {
+	var args []string
+
+	if c.RootCA != "" {
+		args = append(args,
+			"--set", "volumes[0].name=custom-root-ca",
+			"--set", "volumes[0].secretName=custom-root-ca",
+			"--set", "volumes[0].mountPath=/etc/ssl/certs",
+			"--set", "volumes[0].subPath=ca.crt",
+		)
+	}
+
+	return args
+}
+
+func (c *Config) deployHelm() error {
+	if err := c.setupRootCA(); err != nil {
 		return err
 	}
 
-	if !c.Custom {
-		args = append(args, "-f", tmpFile.Name())
+	var args []string
+	args = append(args, "upgrade", "--install", c.ReleaseName, c.Chart)
+	args = append(args, "--namespace", c.Namespace, "--create-namespace")
+
+	// Add helm repo for all apps
+	if err := exec.Command("helm", "repo", "add", c.AppName, c.Repository).Run(); err != nil {
+		return fmt.Errorf("failed to add Helm repository: %v", err)
 	}
 
-	commonValues := filepath.Join("processed-values", "common.yml")
-	if _, err := os.Stat(commonValues); err == nil {
-		args = append(args, "-f", commonValues)
+	if err := exec.Command("helm", "repo", "update").Run(); err != nil {
+		return fmt.Errorf("failed to update Helm repository: %v", err)
 	}
 
-	stageValues := filepath.Join("processed-values", fmt.Sprintf("%s.yml", c.Stage))
-	if _, err := os.Stat(stageValues); err == nil {
-		args = append(args, "-f", stageValues)
+	args = append(args, "--set", fmt.Sprintf("ingress.host=%s", c.IngressHost))
+
+	// Add values files
+	commonValuesFile := filepath.Join(c.ValuesPath, "common.yml")
+	if _, err := os.Stat(commonValuesFile); err == nil {
+		args = append(args, "--values", commonValuesFile)
 	}
 
-	// First deploy without --wait
+	stageValuesFile := filepath.Join(c.ValuesPath, fmt.Sprintf("%s.yml", c.Stage))
+	if _, err := os.Stat(stageValuesFile); err == nil {
+		args = append(args, "--values", stageValuesFile)
+	}
+
+	// Add version if specified
+	if c.Version != "" {
+		args = append(args, "--version", c.Version)
+	}
+
+	// Add Traefik dashboard args if applicable
+	if strings.Contains(c.AppName, "traefik") {
+		args = append(args, c.getTraefikDashboardArgs()...)
+	}
+
+	// Add root CA args
+	args = append(args, c.getRootCAArgs()...)
+
+	// Show diff first
+	fmt.Println("Showing differences:")
+	if err := c.getDiff(args, true); err != nil {
+		return err
+	}
+
+	// Proceed with actual deployment
 	cmd := exec.Command("helm", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("error deploying helm chart: %v", err)
-	}
 
-	// Then wait for rollout
-	fmt.Println("Waiting for deployments to roll out...")
-	cmd = exec.Command("kubectl", "get", "deploy", "-n", c.Namespace, "-o", "name")
-	output, err := cmd.Output()
+	return cmd.Run()
+}
+
+func (c *Config) deployCustom() error {
+	manifests, err := filepath.Glob(filepath.Join(c.ValuesPath, "*.yml"))
 	if err != nil {
-		return fmt.Errorf("error getting deployments: %v", err)
+		return fmt.Errorf("failed to find manifests: %v", err)
 	}
 
-	deployments := strings.Split(strings.TrimSpace(string(output)), "\n")
-	for _, deployment := range deployments {
-		if deployment == "" {
-			continue
-		}
-		fmt.Printf("Waiting for %s...\n", deployment)
-		cmd = exec.Command("kubectl", "rollout", "status", "-n", c.Namespace, deployment, "--timeout=10m")
+	// Show diff first
+	fmt.Println("Showing differences:")
+	if err := c.getDiff(manifests, false); err != nil {
+		return err
+	}
+
+	// Proceed with actual deployment
+	for _, manifest := range manifests {
+		cmd := exec.Command("kubectl", "apply", "-f", manifest, "-n", c.Namespace)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("error waiting for deployment %s: %v", deployment, err)
+			return fmt.Errorf("failed to apply manifest %s: %v", manifest, err)
 		}
 	}
 
@@ -300,29 +451,13 @@ ingress:
 
 func main() {
 	cfg := parseFlags()
-
 	cfg.setupNames()
+	cfg.PrintConfig()
 
-	if err := cfg.ensureNamespace(); err != nil {
-		fmt.Printf("Error creating namespace: %v\n", err)
+	if err := cfg.Deploy(); err != nil {
+		fmt.Printf("Deployment failed: %v\n", err)
 		os.Exit(1)
 	}
 
-	if err := cfg.processValues(); err != nil {
-		fmt.Printf("Error processing values: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := cfg.deployHelm(); err != nil {
-		fmt.Printf("Error deploying helm: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Output URL for GitHub Actions
-	f, err := os.OpenFile(os.Getenv("GITHUB_ENV"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		// handle error
-	}
-	defer f.Close()
-	fmt.Fprintf(f, "URL=https://%s\n", cfg.IngressHost)
+	fmt.Println("Deployment succeeded")
 }
