@@ -92,22 +92,22 @@ jobs:
         run: |
           deploy \
             --stage ${{ steps.vars.outputs.stage }} \
-            --app ${{ inputs.app_name }} \
-            --env ${{ steps.vars.outputs.env }} \
-            --pr ${{ github.event.pull_request.number }} \
-            --values ${{ inputs.values_path }} \
-            --chart ${{ inputs.helm_chart }} \
-            --version ${{ inputs.helm_version }} \
-            --repo ${{ inputs.helm_repository }} \
-            --domain ${{ steps.vars.outputs.domain }} \
+            --app=${{ inputs.app_name }} \
+            --env=${{ steps.vars.outputs.env }} \
+            --pr=${{ github.event.pull_request.number }} \
+            --values=${{ inputs.values_path }} \
+            --chart=${{ inputs.helm_chart }} \
+            --version=${{ inputs.helm_version }} \
+            --repo=${{ inputs.helm_repository }} \
+            --domain=${{ steps.vars.outputs.domain }} \
             --traefik-dashboard=${{ inputs.traefik_dashboard }} \
-            --root-ca ${{ inputs.root_ca }} \
+            --root-ca=${{ inputs.root_ca }} \
             --pr-deployments=${{ inputs.pr_deployments }} \
             --custom=${{ inputs.custom_deployment }}
       - name: Check domain accessibility
         id: check_domain
         run: |
-          if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ]; then
+          if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ] && [ "${{ inputs.pr_deployments }}" ]; then
             domain="${{ inputs.app_name }}-pr-${{ github.event.pull_request.number }}.${{ steps.vars.outputs.domain }}"
           else
             domain="${{ inputs.app_name }}.${{ steps.vars.outputs.domain }}"
