@@ -37,11 +37,12 @@ jobs:
           push: true
           tags: ghcr.io/jhofer-cloud/helm-ci:dev
 
-      - name: Cleanup old images
-        uses: pcasteran/ghcr-cleaning-action@v1
-        with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          package: helm-ci
-          repository: jhofer-cloud/helm-ci
-          dry-run: false
+      ## FIX: Cleanup broken
+      # - name: Cleanup old images
+      #   uses: pcasteran/ghcr-cleaning-action@v1
+      #   with:
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
+      #     package: helm-ci
+      #     repository: jhofer-cloud/helm-ci
+      #     dry-run: false
