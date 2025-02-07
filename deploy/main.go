@@ -34,6 +34,7 @@ type Config struct {
 	TraefikDashboard bool
 	RootCA           string
 	PRDeployments    bool
+	DEBUG            bool
 }
 
 func parseFlags() *Config {
@@ -200,6 +201,30 @@ func (c *Config) Deploy() error {
 	return c.deployHelm()
 }
 
+func extractYAMLContent(helmOutput []byte) ([]byte, error) {
+	lines := strings.Split(string(helmOutput), "\n")
+	var yamlLines []string
+	inManifest := false
+
+	for _, line := range lines {
+		if strings.HasPrefix(line, "MANIFEST:") {
+			inManifest = true
+			continue
+		}
+		if inManifest {
+			if strings.Contains(line, "***") {
+				continue
+			}
+			if strings.HasPrefix(line, "NOTES:") {
+				break
+			}
+			yamlLines = append(yamlLines, line)
+		}
+	}
+
+	return []byte(strings.Join(yamlLines, "\n")), nil
+}
+
 func (c *Config) getDiff(args []string, isHelm bool) error {
 	if isHelm {
 		// Get current state
@@ -225,8 +250,14 @@ func (c *Config) getDiff(args []string, isHelm bool) error {
 			return fmt.Errorf("failed to get proposed state: %v", err)
 		}
 
+		// Extract YAML content from Helm output
+		proposedYAML, err := extractYAMLContent(proposed)
+		if err != nil {
+			return fmt.Errorf("failed to extract YAML content: %v", err)
+		}
+
 		// Create diff using kubectl diff
-		return c.showResourceDiff(current, proposed)
+		return c.showResourceDiff(current, proposedYAML)
 	} else {
 		// For kubectl, use kubectl diff directly
 		for _, manifest := range args {
@@ -279,14 +310,16 @@ func (c *Config) showResourceDiff(current, proposed []byte) error {
 		return fmt.Errorf("failed to write proposed state: %v", err)
 	}
 
-	// Print the contents of the files for debugging
-	fmt.Println("Current YAML:")
-	fmt.Println(string(current))
+	if c.DEBUG {
+		// Print the contents of the files for debugging
+		fmt.Println("Current YAML:")
+		fmt.Println(string(current))
 
-	fmt.Println("Proposed YAML:")
-	fmt.Println(string(proposed))
+		fmt.Println("Proposed YAML:")
+		fmt.Println(string(proposed))
+	}
 
-	// Use kubectl diff to show differences
+	// Use diff to show differences with color
 	diffCmd := exec.Command("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
 	diffCmd.Stdout = os.Stdout
 	diffCmd.Stderr = os.Stderr

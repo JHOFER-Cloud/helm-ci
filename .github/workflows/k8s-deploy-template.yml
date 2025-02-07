@@ -107,7 +107,7 @@ jobs:
       - name: Check domain accessibility
         id: check_domain
         run: |
-          if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ] && [ "${{ inputs.pr_deployments }}" ]; then
+          if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ] && [ "${{ inputs.pr_deployments }}" == "true" ]; then
             domain="${{ inputs.app_name }}-pr-${{ github.event.pull_request.number }}.${{ steps.vars.outputs.domain }}"
           else
             domain="${{ inputs.app_name }}.${{ steps.vars.outputs.domain }}"
