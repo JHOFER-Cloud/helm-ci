@@ -217,24 +217,13 @@ func (c *Config) getRootCAArgs() []string {
 	var args []string
 
 	if c.RootCA != "" {
-		if strings.Contains(c.AppName, "traefik") {
-			args = append(args,
-				"--set", "additionalArguments[0]=--serverstransport.rootcas=/usr/local/share/ca-certificates/ca.crt",
-				"--set", "additionalVolumes[0].name=custom-root-ca",
-				"--set", "additionalVolumes[0].secret.secretName=custom-root-ca",
-				"--set", "additionalVolumeMounts[0].name=custom-root-ca",
-				"--set", "additionalVolumeMounts[0].mountPath=/usr/local/share/ca-certificates/ca.crt",
-				"--set", "additionalVolumeMounts[0].subPath=ca.crt",
-			)
-		} else {
-			args = append(args,
-				"--set", "extraVolumes[0].name=custom-root-ca",
-				"--set", "extraVolumes[0].secret.secretName=custom-root-ca",
-				"--set", "extraVolumeMounts[0].name=custom-root-ca",
-				"--set", "extraVolumeMounts[0].mountPath=/etc/ssl/certs/ca.crt",
-				"--set", "extraVolumeMounts[0].subPath=ca.crt",
-			)
-		}
+		args = append(args,
+			"--set", "volumes[+].name=custom-root-ca",
+			"--set", "volumes[+].secret.secretName=custom-root-ca",
+			"--set", "volumeMounts[+].name=custom-root-ca",
+			"--set", "volumeMounts[+].mountPath=/etc/ssl/certs",
+			"--set", "volumeMounts[+].subPath=ca.crt",
+		)
 	}
 
 	return args
