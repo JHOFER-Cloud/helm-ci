@@ -279,6 +279,13 @@ func (c *Config) showResourceDiff(current, proposed []byte) error {
 		return fmt.Errorf("failed to write proposed state: %v", err)
 	}
 
+	// Print the contents of the files for debugging
+	fmt.Println("Current YAML:")
+	fmt.Println(string(current))
+
+	fmt.Println("Proposed YAML:")
+	fmt.Println(string(proposed))
+
 	// Use kubectl diff to show differences
 	diffCmd := exec.Command("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
 	diffCmd.Stdout = os.Stdout
