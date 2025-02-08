@@ -5,6 +5,9 @@ on:
       app_name:
         required: true
         type: string
+      custom_namespace:
+        required: false
+        type: string
       helm_repository:
         required: false
         type: string
@@ -103,6 +106,7 @@ jobs:
             --traefik-dashboard=${{ inputs.traefik_dashboard }} \
             --root-ca=${{ inputs.root_ca }} \
             --pr-deployments=${{ inputs.pr_deployments }} \
+            --custom-namespace=${{ inputs.custom_namespace }} \
             --custom=${{ inputs.custom_deployment }}
       - name: Check domain accessibility
         id: check_domain

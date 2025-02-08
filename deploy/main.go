@@ -15,26 +15,27 @@ import (
 )
 
 type Config struct {
-	Stage            string
 	AppName          string
-	Environment      string
-	PRNumber         string
-	ValuesPath       string
-	Custom           bool
 	Chart            string
-	Version          string
-	Repository       string
-	Namespace        string
-	ReleaseName      string
-	IngressHost      string
-	GitHubToken      string
-	GitHubRepo       string
-	GitHubOwner      string
-	Domain           string
-	TraefikDashboard bool
-	RootCA           string
-	PRDeployments    bool
+	Custom           bool
+	CustomNameSpace  string
 	DEBUG            bool
+	Domain           string
+	Environment      string
+	GitHubOwner      string
+	GitHubRepo       string
+	GitHubToken      string
+	IngressHost      string
+	Namespace        string
+	PRDeployments    bool
+	PRNumber         string
+	ReleaseName      string
+	Repository       string
+	RootCA           string
+	Stage            string
+	TraefikDashboard bool
+	ValuesPath       string
+	Version          string
 }
 
 func parseFlags() *Config {
@@ -52,6 +53,7 @@ func parseFlags() *Config {
 	flag.StringVar(&cfg.GitHubRepo, "github-repo", "", "GitHub repository name")
 	flag.StringVar(&cfg.GitHubOwner, "github-owner", "", "GitHub repository owner")
 	flag.StringVar(&cfg.Domain, "domain", "", "Ingress domain")
+	flag.StringVar(&cfg.CustomNameSpace, "custom-namespace", "", "Custom K8s Namespace")
 	flag.BoolVar(&cfg.Custom, "custom", false, "Custom Kubernetes deployment")
 	flag.BoolVar(&cfg.TraefikDashboard, "traefik-dashboard", false, "Deploy Traefik dashboard")
 	flag.StringVar(&cfg.RootCA, "root-ca", "", "Path to root CA certificate")
@@ -89,7 +91,9 @@ func (c *Config) PrintConfig() {
 }
 
 func (c *Config) setupNames() {
-	if c.Stage == "live" {
+	if c.CustomNameSpace != "" {
+		c.Namespace = c.CustomNameSpace
+	} else if c.Stage == "live" {
 		c.Namespace = c.AppName
 	} else {
 		c.Namespace = c.AppName + "-dev"
