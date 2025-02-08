@@ -392,7 +392,11 @@ func (c *Config) deployHelm() error {
 	}
 
 	if c.Domain != "" {
-		args = append(args, "--set", fmt.Sprintf("ingress.host=%s", c.IngressHost))
+		if strings.Contains(c.AppName, "vault") {
+			args = append(args, "--set", fmt.Sprintf("server.ingress.hosts[0].host=%s", c.IngressHost))
+		} else {
+			args = append(args, "--set", fmt.Sprintf("ingress.host=%s", c.IngressHost))
+		}
 	}
 
 	// Add values files
