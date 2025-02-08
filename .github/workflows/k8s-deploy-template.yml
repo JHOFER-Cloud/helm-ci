@@ -46,7 +46,7 @@ on:
         default: ""
     secrets:
       KUBE_CONFIG_DEV:
-        required: true
+        required: false
       KUBE_CONFIG_LIVE:
         required: true
 
