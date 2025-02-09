@@ -25,6 +25,15 @@ on:
         required: false
         type: string
         default: "helm/values"
+      vault_url:
+        required: false
+        type: string
+      vault_token:
+        required: false
+        type: string
+      vault_base_path:
+        required: false
+        type: string
       dev_domain:
         required: false
         type: string
@@ -101,6 +110,9 @@ jobs:
             --values=${{ inputs.values_path }} \
             --chart=${{ inputs.helm_chart }} \
             --version=${{ inputs.helm_version }} \
+            --vault-url=${{ inputs.vault_url }} \
+            --vault-token=${{ inputs.vault_token }} \
+            --vault-base-path=${{ inputs.vault_base_path }} \
             --repo=${{ inputs.helm_repository }} \
             --domain=${{ steps.vars.outputs.domain }} \
             --traefik-dashboard=${{ inputs.traefik_dashboard }} \
