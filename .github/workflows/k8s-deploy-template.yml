@@ -34,6 +34,9 @@ on:
       vault_base_path:
         required: false
         type: string
+      vault_insecure_tls:
+        required: false
+        type: string
       dev_domain:
         required: false
         type: string
@@ -113,6 +116,7 @@ jobs:
             --vault-url=${{ inputs.vault_url }} \
             --vault-token=${{ inputs.vault_token }} \
             --vault-base-path=${{ inputs.vault_base_path }} \
+            --vault-insecure-tls=${{ inputs.vault_insecure_tls }} \
             --repo=${{ inputs.helm_repository }} \
             --domain=${{ steps.vars.outputs.domain }} \
             --traefik-dashboard=${{ inputs.traefik_dashboard }} \

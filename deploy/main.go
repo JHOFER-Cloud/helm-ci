@@ -35,6 +35,7 @@ type Config struct {
 	VaultToken       string
 	VaultURL         string
 	Version          string
+	VaultInsecureTLS bool
 }
 
 func parseFlags() *Config {
@@ -60,6 +61,7 @@ func parseFlags() *Config {
 	flag.StringVar(&cfg.VaultURL, "vault-url", "", "Vault server URL")
 	flag.StringVar(&cfg.VaultToken, "vault-token", os.Getenv("VAULT_TOKEN"), "Vault authentication token")
 	flag.StringVar(&cfg.VaultBasePath, "vault-base-path", "", "Base path for Vault secrets")
+	flag.BoolVar(&cfg.VaultInsecureTLS, "vault-insecure-tls", false, "Allow insecure TLS connections to Vault (not recommended for production)")
 	flag.Parse()
 
 	if cfg.AppName == "" {
@@ -119,10 +121,15 @@ func (c *Config) processValuesFileWithVault(filename string) (string, error) {
 		return filename, nil
 	}
 
+	if c.VaultInsecureTLS {
+		fmt.Println("Warning: Using insecure TLS for Vault connections. This is not recommended for production use.")
+	}
+
 	vaultClient := vault.NewVaultClient(vault.VaultConfig{
-		URL:      c.VaultURL,
-		Token:    c.VaultToken,
-		BasePath: c.VaultBasePath,
+		URL:           c.VaultURL,
+		Token:         c.VaultToken,
+		BasePath:      c.VaultBasePath,
+		InsecureHTTPS: c.VaultInsecureTLS,
 	})
 
 	content, err := os.ReadFile(filename)

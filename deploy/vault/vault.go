@@ -1,6 +1,7 @@
 package vault
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,9 +11,10 @@ import (
 )
 
 type VaultConfig struct {
-	URL      string
-	Token    string
-	BasePath string
+	URL           string
+	Token         string
+	BasePath      string
+	InsecureHTTPS bool
 }
 
 type VaultClient struct {
@@ -21,9 +23,16 @@ type VaultClient struct {
 }
 
 func NewVaultClient(config VaultConfig) *VaultClient {
+	// Create custom transport with configurable TLS settings
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: config.InsecureHTTPS,
+		},
+	}
+
 	return &VaultClient{
 		config: config,
-		client: &http.Client{},
+		client: &http.Client{Transport: tr},
 	}
 }
 
