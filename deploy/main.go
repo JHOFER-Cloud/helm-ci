@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"helm-ci/deploy/vault"
 	"io"
 	"net/http"
 	"os"
@@ -35,7 +36,12 @@ type Config struct {
 	Stage            string
 	TraefikDashboard bool
 	ValuesPath       string
+	VaultBasePath    string
+	VaultInsecureTLS bool
+	VaultToken       string
+	VaultURL         string
 	Version          string
+	VaultKVVersion   int
 }
 
 func parseFlags() *Config {
@@ -58,6 +64,12 @@ func parseFlags() *Config {
 	flag.BoolVar(&cfg.TraefikDashboard, "traefik-dashboard", false, "Deploy Traefik dashboard")
 	flag.StringVar(&cfg.RootCA, "root-ca", "", "Path to root CA certificate")
 	flag.BoolVar(&cfg.PRDeployments, "pr-deployments", true, "Enable PR deployments")
+	// New Vault-related flags
+	flag.StringVar(&cfg.VaultURL, "vault-url", "", "Vault server URL")
+	flag.StringVar(&cfg.VaultToken, "vault-token", os.Getenv("VAULT_TOKEN"), "Vault authentication token")
+	flag.StringVar(&cfg.VaultBasePath, "vault-base-path", "", "Base path for Vault secrets")
+	flag.BoolVar(&cfg.VaultInsecureTLS, "vault-insecure-tls", false, "Allow insecure TLS connections to Vault (not recommended for production)")
+	flag.IntVar(&cfg.VaultKVVersion, "vault-kv-version", 2, "Vault KV version (1 or 2)")
 	flag.Parse()
 
 	if cfg.AppName == "" {
@@ -86,7 +98,12 @@ func (c *Config) PrintConfig() {
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		fieldName := t.Field(i).Name
-		fmt.Printf("- %s: %v\n", fieldName, field.Interface())
+		// Don't print sensitive values
+		if fieldName == "VaultToken" || fieldName == "GitHubToken" {
+			fmt.Printf("- %s: [REDACTED]\n", fieldName)
+		} else {
+			fmt.Printf("- %s: %v\n", fieldName, field.Interface())
+		}
 	}
 }
 
@@ -110,6 +127,51 @@ func (c *Config) setupNames() {
 			c.IngressHost = fmt.Sprintf("%s.%s", c.AppName, c.Domain)
 		}
 	}
+}
+
+func (c *Config) processValuesFileWithVault(filename string) (string, error) {
+	// If Vault URL is not configured, return the original file
+	if c.VaultURL == "" {
+		return filename, nil
+	}
+
+	// Read the original values file
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		return "", fmt.Errorf("failed to read values file %s: %v", filename, err)
+	}
+
+	// Create Vault client
+	vaultClient, err := vault.NewClient(
+		c.VaultURL,
+		c.VaultToken,
+		c.VaultBasePath,
+		c.VaultKVVersion,
+		c.VaultInsecureTLS,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize vault client: %w", err)
+	}
+
+	// Process the content using the new method
+	processedContent, err := vaultClient.ProcessString(string(content))
+	if err != nil {
+		return "", fmt.Errorf("failed to process vault templates in file %s: %w", filename, err)
+	}
+
+	// Create a temporary file for the processed values
+	tmpFile, err := os.CreateTemp("", "values-*.yml")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temporary file: %v", err)
+	}
+
+	// Write the processed content to the temporary file
+	if err := os.WriteFile(tmpFile.Name(), []byte(processedContent), 0644); err != nil {
+		os.Remove(tmpFile.Name()) // Clean up the temp file if write fails
+		return "", fmt.Errorf("failed to write processed values: %v", err)
+	}
+
+	return tmpFile.Name(), nil
 }
 
 func (c *Config) setupRootCA() error {
@@ -398,16 +460,29 @@ func (c *Config) deployHelm() error {
 			args = append(args, "--set", fmt.Sprintf("ingress.host=%s", c.IngressHost))
 		}
 	}
-
-	// Add values files
+	// Process and add values files with Vault templating
 	commonValuesFile := filepath.Join(c.ValuesPath, "common.yml")
 	if _, err := os.Stat(commonValuesFile); err == nil {
-		args = append(args, "--values", commonValuesFile)
+		processedFile, err := c.processValuesFileWithVault(commonValuesFile)
+		if err != nil {
+			return err
+		}
+		if processedFile != commonValuesFile {
+			defer os.Remove(processedFile)
+		}
+		args = append(args, "--values", processedFile)
 	}
 
 	stageValuesFile := filepath.Join(c.ValuesPath, fmt.Sprintf("%s.yml", c.Stage))
 	if _, err := os.Stat(stageValuesFile); err == nil {
-		args = append(args, "--values", stageValuesFile)
+		processedFile, err := c.processValuesFileWithVault(stageValuesFile)
+		if err != nil {
+			return err
+		}
+		if processedFile != stageValuesFile {
+			defer os.Remove(processedFile)
+		}
+		args = append(args, "--values", processedFile)
 	}
 
 	// Add version if specified
@@ -443,14 +518,27 @@ func (c *Config) deployCustom() error {
 		return fmt.Errorf("failed to find manifests: %v", err)
 	}
 
+	// Process manifests with Vault templating
+	processedManifests := make([]string, 0, len(manifests))
+	for _, manifest := range manifests {
+		processedFile, err := c.processValuesFileWithVault(manifest)
+		if err != nil {
+			return err
+		}
+		if processedFile != manifest {
+			defer os.Remove(processedFile)
+		}
+		processedManifests = append(processedManifests, processedFile)
+	}
+
 	// Show diff first
 	fmt.Println("Showing differences:")
-	if err := c.getDiff(manifests, false); err != nil {
+	if err := c.getDiff(processedManifests, false); err != nil {
 		return err
 	}
 
 	// Proceed with actual deployment
-	for _, manifest := range manifests {
+	for _, manifest := range processedManifests {
 		cmd := exec.Command("kubectl", "apply", "-f", manifest, "-n", c.Namespace)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
