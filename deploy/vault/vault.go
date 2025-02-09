@@ -15,6 +15,7 @@ type VaultConfig struct {
 	Token         string
 	BasePath      string
 	InsecureHTTPS bool
+	KVVersion     int
 }
 
 type VaultClient struct {
@@ -23,7 +24,10 @@ type VaultClient struct {
 }
 
 func NewVaultClient(config VaultConfig) *VaultClient {
-	// Create custom transport with configurable TLS settings
+	if config.KVVersion == 0 {
+		config.KVVersion = 2 // Default to KV v2 if not specified
+	}
+
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: config.InsecureHTTPS,
@@ -36,9 +40,32 @@ func NewVaultClient(config VaultConfig) *VaultClient {
 	}
 }
 
+// formatVaultPath formats the path according to KV version
+func (v *VaultClient) formatVaultPath(path string) string {
+	// Remove any leading/trailing slashes
+	path = strings.Trim(path, "/")
+
+	// Split path into mount and key path
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) != 2 {
+		return path // Return as is if can't split
+	}
+
+	mount, keyPath := parts[0], parts[1]
+
+	// Format according to KV version
+	if v.config.KVVersion == 2 {
+		// KV v2 format: /v1/[mount]/data/[path]
+		return fmt.Sprintf("%s/v1/%s/data/%s", v.config.URL, mount, keyPath)
+	}
+
+	// KV v1 format: /v1/[mount]/[path]
+	return fmt.Sprintf("%s/v1/%s/%s", v.config.URL, mount, keyPath)
+}
+
 // getSecret retrieves a secret from Vault
 func (v *VaultClient) getSecret(path string) (map[string]interface{}, error) {
-	fullPath := fmt.Sprintf("%s/v1/%s", v.config.URL, strings.TrimPrefix(path, "/"))
+	fullPath := v.formatVaultPath(path)
 	req, err := http.NewRequest("GET", fullPath, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %v", err)
@@ -57,13 +84,22 @@ func (v *VaultClient) getSecret(path string) (map[string]interface{}, error) {
 	}
 
 	var result struct {
-		Data map[string]interface{} `json:"data"`
+		Data struct {
+			Data map[string]interface{} `json:"data"` // For KV v2
+		} `json:"data"`
+		// Direct data for KV v1
+		DirectData map[string]interface{} `json:"data"`
 	}
+
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %v", err)
 	}
 
-	return result.Data, nil
+	// Handle different response structures for KV v1 and v2
+	if v.config.KVVersion == 2 {
+		return result.Data.Data, nil
+	}
+	return result.DirectData, nil
 }
 
 // ProcessYAMLWithVaultTemplates processes a YAML file and replaces Vault templates
@@ -115,15 +151,10 @@ func (v *VaultClient) processNode(node interface{}) (interface{}, error) {
 }
 
 func (v *VaultClient) resolveVaultTemplate(template string) (interface{}, error) {
-	// Remove the <<vault. prefix
+	// Remove the <<vault. prefix and get path
 	path := strings.TrimPrefix(template, "<<vault.")
 
-	// If basePath is set, prepend it unless the path is absolute
-	if v.config.BasePath != "" && !strings.HasPrefix(path, "/") {
-		path = fmt.Sprintf("%s/%s", strings.Trim(v.config.BasePath, "/"), path)
-	}
-
-	// Split path into secret path and key
+	// Split the path to separate the secret key
 	parts := strings.Split(path, "/")
 	if len(parts) < 2 {
 		return nil, fmt.Errorf("invalid vault template format: %s", template)
@@ -132,14 +163,19 @@ func (v *VaultClient) resolveVaultTemplate(template string) (interface{}, error)
 	secretKey := parts[len(parts)-1]
 	secretPath := strings.Join(parts[:len(parts)-1], "/")
 
+	// If basePath is set, prepend it unless the path is absolute
+	if v.config.BasePath != "" && !strings.HasPrefix(secretPath, "/") {
+		secretPath = fmt.Sprintf("%s/%s", strings.Trim(v.config.BasePath, "/"), secretPath)
+	}
+
 	secret, err := v.getSecret(secretPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get secret from path %s: %v", secretPath, err)
 	}
 
 	value, ok := secret[secretKey]
 	if !ok {
-		return nil, fmt.Errorf("key %s not found in secret %s", secretKey, secretPath)
+		return nil, fmt.Errorf("key %s not found in secret at path %s", secretKey, secretPath)
 	}
 
 	// Handle multiline strings
