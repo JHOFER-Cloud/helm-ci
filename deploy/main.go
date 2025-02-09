@@ -152,10 +152,16 @@ func (c *Config) processValuesFileWithVault(filename string) (string, error) {
 		return "", fmt.Errorf("failed to read values file %s: %v", filename, err)
 	}
 
+	// Debug: Print the content before processing
+	fmt.Printf("Original content:\n%s\n", string(content))
+
 	processed, err := vaultClient.ProcessYAMLWithVaultTemplates(content)
 	if err != nil {
 		return "", fmt.Errorf("failed to process vault templates in %s: %v", filename, err)
 	}
+
+	// Debug: Print the processed content after templating
+	fmt.Printf("Processed content:\n%s\n", string(processed))
 
 	// Create a temporary file with processed content
 	tempFile, err := os.CreateTemp("", "values-*.yml")

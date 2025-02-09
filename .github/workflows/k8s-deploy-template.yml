@@ -33,7 +33,8 @@ on:
         type: string
       vault_insecure_tls:
         required: false
-        type: string
+        type: boolean
+        default: false
       vault_kv_version:
         required: false
         type: number
