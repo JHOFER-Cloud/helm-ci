@@ -8,6 +8,11 @@ import (
 	"net/http"
 )
 
+const (
+	KVv1 = 1
+	KVv2 = 2
+)
+
 type Client struct {
 	baseURL    string
 	token      string
@@ -17,6 +22,10 @@ type Client struct {
 }
 
 func NewClient(baseURL, token, basePath string, kvVersion int, insecureTLS bool) (*Client, error) {
+	if kvVersion != KVv1 && kvVersion != KVv2 {
+		return nil, fmt.Errorf("invalid KV version: must be 1 or 2")
+	}
+
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: insecureTLS,
@@ -39,6 +48,7 @@ func (c *Client) GetSecret(placeholder string) (string, error) {
 	}
 
 	vPath.BasePath = c.basePath
+	vPath.Version = c.kvVersion
 	secretPath := vPath.BuildSecretPath()
 
 	url := fmt.Sprintf("%s/v1/%s", c.baseURL, secretPath)
@@ -61,20 +71,31 @@ func (c *Client) GetSecret(placeholder string) (string, error) {
 		return "", fmt.Errorf("vault request failed: %s, status: %d", string(body), resp.StatusCode)
 	}
 
-	var result struct {
-		Data struct {
+	if c.kvVersion == KVv2 {
+		var result struct {
+			Data struct {
+				Data map[string]string `json:"data"`
+			} `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return "", err
+		}
+		value, ok := result.Data.Data[vPath.Key]
+		if !ok {
+			return "", fmt.Errorf("key %s not found in secret", vPath.Key)
+		}
+		return value, nil
+	} else {
+		var result struct {
 			Data map[string]string `json:"data"`
-		} `json:"data"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return "", err
+		}
+		value, ok := result.Data[vPath.Key]
+		if !ok {
+			return "", fmt.Errorf("key %s not found in secret", vPath.Key)
+		}
+		return value, nil
 	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
-	}
-
-	value, ok := result.Data.Data[vPath.Key]
-	if !ok {
-		return "", fmt.Errorf("key %s not found in secret", vPath.Key)
-	}
-
-	return value, nil
 }

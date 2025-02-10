@@ -9,6 +9,7 @@ type VaultPath struct {
 	BasePath string
 	Path     string
 	Key      string
+	Version  int
 }
 
 func ParseVaultPath(placeholder string) (*VaultPath, error) {
@@ -35,5 +36,8 @@ func ParseVaultPath(placeholder string) (*VaultPath, error) {
 
 func (vp *VaultPath) BuildSecretPath() string {
 	vp.BasePath = strings.TrimSuffix(vp.BasePath, "/")
-	return fmt.Sprintf("%s/data/%s", vp.BasePath, vp.Path)
+	if vp.Version == KVv2 {
+		return fmt.Sprintf("%s/data/%s", vp.BasePath, vp.Path)
+	}
+	return fmt.Sprintf("%s/%s", vp.BasePath, vp.Path)
 }

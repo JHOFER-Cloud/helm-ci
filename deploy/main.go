@@ -159,6 +159,10 @@ func (c *Config) processValuesFileWithVault(filename string) (string, error) {
 		return "", fmt.Errorf("failed to process vault templates in file %s: %w", filename, err)
 	}
 
+	///DEBUG ONLY; THIS WILL PRINT THE SECRET!!!!!!!
+	// fmt.Println("Processed content:", processedContent)
+	// os.Exit(1)
+
 	// Create a temporary file for the processed values
 	tmpFile, err := os.CreateTemp("", "values-*.yml")
 	if err != nil {

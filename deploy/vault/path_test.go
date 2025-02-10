@@ -64,18 +64,29 @@ func TestVaultPath_BuildSecretPath(t *testing.T) {
 		expected string
 	}{
 		{
-			name: "normal path",
+			name: "KV v2 path",
 			path: &VaultPath{
 				BasePath: "talos",
 				Path:     "renovate/common",
+				Version:  KVv2,
 			},
 			expected: "talos/data/renovate/common",
 		},
 		{
-			name: "base path with trailing slash",
+			name: "KV v1 path",
+			path: &VaultPath{
+				BasePath: "talos",
+				Path:     "renovate/common",
+				Version:  KVv1,
+			},
+			expected: "talos/renovate/common",
+		},
+		{
+			name: "KV v2 path with trailing slash",
 			path: &VaultPath{
 				BasePath: "talos/",
 				Path:     "renovate/common",
+				Version:  KVv2,
 			},
 			expected: "talos/data/renovate/common",
 		},
@@ -101,7 +112,7 @@ func TestClient_ProcessString(t *testing.T) {
 
 		// Return different responses based on the path
 		switch r.URL.Path {
-		case "/v1/talos/data/renovate/common":
+		case "/v1/talos/data/renovate/common": // KV v2 path
 			fmt.Fprintf(w, `{
                 "data": {
                     "data": {
@@ -110,49 +121,57 @@ func TestClient_ProcessString(t *testing.T) {
                     }
                 }
             }`)
+		case "/v1/talos/renovate/common": // KV v1 path
+			fmt.Fprintf(w, `{
+                "data": {
+                    "API_TOKEN": "secret123",
+                    "OTHER_TOKEN": "secret456"
+                }
+            }`)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
 	defer server.Close()
 
-	client, err := NewClient(
-		server.URL,
-		"test-token",
-		"talos",
-		2,
-		true,
-	)
-	if err != nil {
-		t.Fatalf("Failed to create client: %v", err)
-	}
-
 	tests := []struct {
 		name    string
+		client  *Client
 		input   string
 		want    string
 		wantErr bool
 	}{
 		{
-			name:    "single placeholder",
+			name:    "KV v2 single placeholder",
+			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
 			input:   "token: <<vault.renovate/common/API_TOKEN>>",
 			want:    "token: secret123",
 			wantErr: false,
 		},
 		{
-			name:    "multiple placeholders",
+			name:    "KV v1 single placeholder",
+			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv1, true),
+			input:   "token: <<vault.renovate/common/API_TOKEN>>",
+			want:    "token: secret123",
+			wantErr: false,
+		},
+		{
+			name:    "KV v2 multiple placeholders",
+			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
 			input:   "token1: <<vault.renovate/common/API_TOKEN>>\ntoken2: <<vault.renovate/common/OTHER_TOKEN>>",
 			want:    "token1: secret123\ntoken2: secret456",
 			wantErr: false,
 		},
 		{
-			name:    "invalid placeholder",
+			name:    "KV v2 invalid placeholder",
+			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
 			input:   "token: <<vault.invalid/path>>",
 			want:    "",
 			wantErr: true,
 		},
 		{
-			name:    "no placeholders",
+			name:    "KV v2 no placeholders",
+			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
 			input:   "regular: value",
 			want:    "regular: value",
 			wantErr: false,
@@ -161,7 +180,7 @@ func TestClient_ProcessString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := client.ProcessString(tt.input)
+			got, err := tt.client.ProcessString(tt.input)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ProcessString() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -171,6 +190,15 @@ func TestClient_ProcessString(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Helper function to create a client
+func mustNewClient(t *testing.T, url, token, basePath string, version int, insecure bool) *Client {
+	client, err := NewClient(url, token, basePath, version, insecure)
+	if err != nil {
+		t.Fatalf("Failed to create client: %v", err)
+	}
+	return client
 }
 
 // Helper function to compare VaultPath structs
