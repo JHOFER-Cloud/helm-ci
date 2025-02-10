@@ -1,3 +1,10 @@
+# [1.0.0-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.0-dev.1...v1.0.0-dev.2) (2025-02-10)
+
+
+### Bug Fixes
+
+* semantic-release issue write permissions ([b288e3a](https://github.com/JHOFER-Cloud/helm-ci/commit/b288e3a4b8334523a797efbb425baf3cb646a7e1))
+
 # 1.0.0-dev.1 (2025-02-10)
 
 
