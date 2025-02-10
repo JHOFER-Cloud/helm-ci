@@ -136,6 +136,7 @@ func (c *Config) setupNames() {
 func (c *Config) processValuesFileWithVault(filename string) (string, error) {
 	// If Vault URL is not configured, return the original file
 	if c.VaultURL == "" {
+		utils.Log.Debug("No Vault URL configured, using original values file")
 		return filename, nil
 	}
 
@@ -352,14 +353,27 @@ func (c *Config) getDiff(args []string, isHelm bool) error {
 			cmd := exec.Command("helm", dryRunArgs...)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			return cmd.Run()
+			if err := cmd.Run(); err != nil {
+				// Add more detailed error information
+				utils.Log.Errorf("Dry-run failed: %v", err)
+				if exitErr, ok := err.(*exec.ExitError); ok {
+					utils.Log.Errorf("Stderr: %s", string(exitErr.Stderr))
+				}
+				return fmt.Errorf("failed to get proposed state: %w", err)
+			}
+			return nil
 		}
 
 		dryRunArgs := append(args, "--dry-run")
 		proposedCmd := exec.Command("helm", dryRunArgs...)
 		proposed, err := proposedCmd.Output()
 		if err != nil {
-			return utils.NewError("failed to get proposed state: %v", err)
+			// Add more detailed error information
+			utils.Log.Errorf("Failed to get proposed state: %v", err)
+			if exitErr, ok := err.(*exec.ExitError); ok {
+				utils.Log.Errorf("Stderr: %s", string(exitErr.Stderr))
+			}
+			return utils.NewError("failed to get proposed state: %w", err)
 		}
 
 		proposedYAML, err := extractYAMLContent(proposed)
