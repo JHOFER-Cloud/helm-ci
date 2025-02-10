@@ -4,7 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v2"
 )
 
 func TestParseVaultPath(t *testing.T) {
@@ -119,6 +123,15 @@ func TestClient_ProcessString(t *testing.T) {
                     }
                 }
             }`)
+		case "/v1/talos/data/longhorn/dev":
+			fmt.Fprintf(w, `{
+                "data": {
+                    "data": {
+                        "CIFS_USERNAME": "test-user",
+                        "CIFS_PASSWORD": "test-password"
+                    }
+                }
+            }`)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -159,6 +172,29 @@ func TestClient_ProcessString(t *testing.T) {
 			want:    "token: simple-secret",
 			wantErr: false,
 		},
+		{
+			name:   "Kubernetes Secret",
+			client: mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
+			input: `apiVersion: v1
+kind: Secret
+metadata:
+  name: cifs-secret
+  namespace: longhorn-system
+type: Opaque
+data:
+  CIFS_USERNAME: <<vault.longhorn/dev/CIFS_USERNAME>>
+  CIFS_PASSWORD: <<vault.longhorn/dev/CIFS_PASSWORD>>`,
+			want: `apiVersion: v1
+kind: Secret
+metadata:
+  name: cifs-secret
+  namespace: longhorn-system
+type: Opaque
+data:
+  CIFS_USERNAME: dGVzdC11c2Vy
+  CIFS_PASSWORD: dGVzdC1wYXNzd29yZA==`,
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -168,8 +204,29 @@ func TestClient_ProcessString(t *testing.T) {
 				t.Errorf("ProcessString() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !tt.wantErr && got != tt.want {
-				t.Errorf("ProcessString() =\n%v\nwant\n%v", got, tt.want)
+
+			if !tt.wantErr {
+				// For non-Secret cases, compare strings directly
+				if !strings.Contains(tt.input, "kind: Secret") {
+					if got != tt.want {
+						t.Errorf("ProcessString() =\n%v\nwant\n%v", got, tt.want)
+					}
+					return
+				}
+
+				// For Secret cases, parse and compare the YAML structures
+				var gotSecret, wantSecret map[string]interface{}
+				if err := yaml.Unmarshal([]byte(got), &gotSecret); err != nil {
+					t.Fatalf("Failed to parse got YAML: %v", err)
+				}
+				if err := yaml.Unmarshal([]byte(tt.want), &wantSecret); err != nil {
+					t.Fatalf("Failed to parse want YAML: %v", err)
+				}
+
+				// Compare the parsed structures
+				if !reflect.DeepEqual(gotSecret, wantSecret) {
+					t.Errorf("ProcessString() parsed content differs:\ngot = %#v\nwant = %#v", gotSecret, wantSecret)
+				}
 			}
 		})
 	}

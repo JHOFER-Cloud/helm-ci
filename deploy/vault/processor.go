@@ -1,14 +1,18 @@
 package vault
 
 import (
+	"encoding/base64"
 	"helm-ci/deploy/utils"
 	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 var vaultPlaceholderRegex = regexp.MustCompile(`<<vault\.[^>]+>>`)
 
 func (c *Client) ProcessString(input string) (string, error) {
+	// First process vault placeholders
 	result := input
 	matches := vaultPlaceholderRegex.FindAllString(input, -1)
 
@@ -40,6 +44,35 @@ func (c *Client) ProcessString(input string) (string, error) {
 			// For single-line values, just replace directly
 			result = strings.ReplaceAll(result, placeholder, secretValue)
 		}
+	}
+
+	// Then handle Kubernetes Secret base64 encoding if needed
+	if strings.Contains(result, "kind: Secret") {
+		var secret map[string]interface{}
+		if err := yaml.Unmarshal([]byte(result), &secret); err != nil {
+			return "", utils.NewError("failed to parse Secret YAML: %v", err)
+		}
+
+		// Get the data section and ensure it's a map
+		if data, ok := secret["data"].(map[interface{}]interface{}); ok {
+			newData := make(map[interface{}]interface{})
+			// Base64 encode each value
+			for k, v := range data {
+				if str, ok := v.(string); ok {
+					newData[k] = base64.StdEncoding.EncodeToString([]byte(str))
+				} else {
+					newData[k] = v
+				}
+			}
+			secret["data"] = newData
+		}
+
+		// Convert back to YAML
+		yamlBytes, err := yaml.Marshal(secret)
+		if err != nil {
+			return "", utils.NewError("failed to marshal Secret YAML: %v", err)
+		}
+		result = string(yamlBytes)
 	}
 
 	return result, nil

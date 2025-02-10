@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"helm-ci/deploy/utils"
@@ -14,6 +15,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
@@ -158,6 +161,35 @@ func (c *Config) processValuesFileWithVault(filename string) (string, error) {
 	processedContent, err := vaultClient.ProcessString(string(content))
 	if err != nil {
 		return "", utils.NewError("failed to process vault templates in file %s: %w", filename, err)
+	}
+
+	// Check if this is a Kubernetes Secret
+	if strings.Contains(processedContent, "kind: Secret") {
+		// Parse the YAML
+		var secret map[string]interface{}
+		err = yaml.Unmarshal([]byte(processedContent), &secret)
+		if err != nil {
+			return "", utils.NewError("failed to parse Secret YAML: %v", err)
+		}
+
+		// Get the data section
+		if data, ok := secret["data"].(map[string]interface{}); ok {
+			// Base64 encode each value
+			for k, v := range data {
+				if str, ok := v.(string); ok {
+					data[k] = base64.StdEncoding.EncodeToString([]byte(str))
+				}
+			}
+			// Update the secret with encoded values
+			secret["data"] = data
+		}
+
+		// Convert back to YAML
+		yamlBytes, err := yaml.Marshal(secret)
+		if err != nil {
+			return "", utils.NewError("failed to marshal Secret YAML: %v", err)
+		}
+		processedContent = string(yamlBytes)
 	}
 
 	if c.DEBUG {
@@ -350,7 +382,7 @@ func (c *Config) getDiff(args []string, isHelm bool) error {
 					return utils.NewError("failed to show resources for %s: %v", manifest, err)
 				}
 			} else {
-				utils.Success("\nDiff for %s:\n", manifest)
+				utils.Green("\nDiff for %s:\n", manifest)
 				fmt.Println(utils.ColorizeKubectlDiff(string(output)))
 			}
 
