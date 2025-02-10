@@ -160,7 +160,7 @@ func (c *Config) processValuesFileWithVault(filename string) (string, error) {
 	}
 
 	///DEBUG ONLY; THIS WILL PRINT THE SECRET!!!!!!!
-	// fmt.Println("Processed content:", processedContent)
+	// fmt.Println("=> Processed content:", processedContent)
 	// os.Exit(1)
 
 	// Create a temporary file for the processed values

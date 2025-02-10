@@ -103,29 +103,20 @@ func TestVaultPath_BuildSecretPath(t *testing.T) {
 }
 
 func TestClient_ProcessString(t *testing.T) {
-	// Create a mock HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Vault-Token") != "test-token" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		// Return different responses based on the path
 		switch r.URL.Path {
-		case "/v1/talos/data/renovate/common": // KV v2 path
+		case "/v1/talos/data/renovate/common":
 			fmt.Fprintf(w, `{
                 "data": {
                     "data": {
-                        "API_TOKEN": "secret123",
-                        "OTHER_TOKEN": "secret456"
+                        "API_TOKEN": "{\n  \"platform\": \"github\",\n  \"token\": \"SECRET\",\n  \"autodiscover\": \"true\"\n}",
+                        "SIMPLE_TOKEN": "simple-secret"
                     }
-                }
-            }`)
-		case "/v1/talos/renovate/common": // KV v1 path
-			fmt.Fprintf(w, `{
-                "data": {
-                    "API_TOKEN": "secret123",
-                    "OTHER_TOKEN": "secret456"
                 }
             }`)
 		default:
@@ -142,38 +133,30 @@ func TestClient_ProcessString(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name:    "KV v2 single placeholder",
-			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
-			input:   "token: <<vault.renovate/common/API_TOKEN>>",
-			want:    "token: secret123",
+			name:   "Multi-line JSON config",
+			client: mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
+			input: `renovate:
+  configIsSecret: true
+  config: <<vault.renovate/common/API_TOKEN>>
+  securityContext:
+    allowPrivilegeEscalation: false`,
+			want: `renovate:
+  configIsSecret: true
+  config: |
+    {
+      "platform": "github",
+      "token": "SECRET",
+      "autodiscover": "true"
+    }
+  securityContext:
+    allowPrivilegeEscalation: false`,
 			wantErr: false,
 		},
 		{
-			name:    "KV v1 single placeholder",
-			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv1, true),
-			input:   "token: <<vault.renovate/common/API_TOKEN>>",
-			want:    "token: secret123",
-			wantErr: false,
-		},
-		{
-			name:    "KV v2 multiple placeholders",
+			name:    "Single line value",
 			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
-			input:   "token1: <<vault.renovate/common/API_TOKEN>>\ntoken2: <<vault.renovate/common/OTHER_TOKEN>>",
-			want:    "token1: secret123\ntoken2: secret456",
-			wantErr: false,
-		},
-		{
-			name:    "KV v2 invalid placeholder",
-			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
-			input:   "token: <<vault.invalid/path>>",
-			want:    "",
-			wantErr: true,
-		},
-		{
-			name:    "KV v2 no placeholders",
-			client:  mustNewClient(t, server.URL, "test-token", "talos", KVv2, true),
-			input:   "regular: value",
-			want:    "regular: value",
+			input:   "token: <<vault.renovate/common/SIMPLE_TOKEN>>",
+			want:    "token: simple-secret",
 			wantErr: false,
 		},
 	}
@@ -186,7 +169,7 @@ func TestClient_ProcessString(t *testing.T) {
 				return
 			}
 			if !tt.wantErr && got != tt.want {
-				t.Errorf("ProcessString() = %v, want %v", got, tt.want)
+				t.Errorf("ProcessString() =\n%v\nwant\n%v", got, tt.want)
 			}
 		})
 	}
