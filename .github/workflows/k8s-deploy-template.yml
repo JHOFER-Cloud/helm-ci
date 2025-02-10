@@ -5,6 +5,9 @@ on:
       app_name:
         required: true
         type: string
+      custom_namespace:
+        required: false
+        type: string
       helm_repository:
         required: false
         type: string
@@ -22,8 +25,21 @@ on:
         required: false
         type: string
         default: "helm/values"
+      vault_url:
+        required: false
+        type: string
+      vault_base_path:
+        required: false
+        type: string
+      vault_insecure_tls:
+        required: false
+        type: boolean
+        default: false
+      vault_kv_version:
+        required: false
+        type: number
       dev_domain:
-        required: true
+        required: false
         type: string
       live_domain:
         required: false
@@ -46,9 +62,11 @@ on:
         default: ""
     secrets:
       KUBE_CONFIG_DEV:
-        required: true
+        required: false
       KUBE_CONFIG_LIVE:
         required: true
+      VAULT_TOKEN:
+        required: false
 
 jobs:
   deploy:
@@ -89,6 +107,7 @@ jobs:
         id: deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
         run: |
           deploy \
             --stage ${{ steps.vars.outputs.stage }} \
@@ -98,14 +117,20 @@ jobs:
             --values=${{ inputs.values_path }} \
             --chart=${{ inputs.helm_chart }} \
             --version=${{ inputs.helm_version }} \
+            --vault-url=${{ inputs.vault_url }} \
+            --vault-base-path=${{ inputs.vault_base_path }} \
+            --vault-insecure-tls=${{ inputs.vault_insecure_tls }} \
+            --vault-kv-version=${{ inputs.vault_kv_version }} \
             --repo=${{ inputs.helm_repository }} \
             --domain=${{ steps.vars.outputs.domain }} \
             --traefik-dashboard=${{ inputs.traefik_dashboard }} \
             --root-ca=${{ inputs.root_ca }} \
             --pr-deployments=${{ inputs.pr_deployments }} \
+            --custom-namespace=${{ inputs.custom_namespace }} \
             --custom=${{ inputs.custom_deployment }}
       - name: Check domain accessibility
         id: check_domain
+        if: ${{ steps.vars.outputs.domain != '' }}
         run: |
           if [ "${{ steps.vars.outputs.stage }}" == "dev" ] && [ -n "${{ github.event.pull_request.number }}" ] && [ "${{ inputs.pr_deployments }}" == "true" ]; then
             domain="${{ inputs.app_name }}-pr-${{ github.event.pull_request.number }}.${{ steps.vars.outputs.domain }}"

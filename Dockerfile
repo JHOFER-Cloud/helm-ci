@@ -4,7 +4,9 @@ FROM golang:1.23-alpine
 RUN apk add --no-cache curl
 
 WORKDIR /app
-COPY deploy/main.go .
-RUN go build -o /usr/local/bin/deploy main.go
+COPY . .
+RUN go mod download
+RUN go mod tidy
+RUN go build -o /usr/local/bin/deploy ./deploy/main.go
 
 ENTRYPOINT ["deploy"]
