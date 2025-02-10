@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"helm-ci/deploy/utils"
 	"io"
 	"net/http"
 )
@@ -23,9 +24,12 @@ type Client struct {
 
 func NewClient(baseURL, token, basePath string, kvVersion int, insecureTLS bool) (*Client, error) {
 	if kvVersion != KVv1 && kvVersion != KVv2 {
-		return nil, fmt.Errorf("invalid KV version: must be 1 or 2")
+		return nil, utils.NewError("invalid KV version: must be 1 or 2")
 	}
 
+	if insecureTLS {
+		utils.Log.Warning("Skipping TLS verification. This is insecure and should not be used in production.")
+	}
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: insecureTLS,
@@ -68,7 +72,7 @@ func (c *Client) GetSecret(placeholder string) (string, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("vault request failed: %s, status: %d", string(body), resp.StatusCode)
+		return "", utils.NewError("vault request failed: %s, status: %d", string(body), resp.StatusCode)
 	}
 
 	if c.kvVersion == KVv2 {
@@ -82,7 +86,7 @@ func (c *Client) GetSecret(placeholder string) (string, error) {
 		}
 		value, ok := result.Data.Data[vPath.Key]
 		if !ok {
-			return "", fmt.Errorf("key %s not found in secret", vPath.Key)
+			return "", utils.NewError("key %s not found in secret", vPath.Key)
 		}
 		return value, nil
 	} else {
@@ -94,7 +98,7 @@ func (c *Client) GetSecret(placeholder string) (string, error) {
 		}
 		value, ok := result.Data[vPath.Key]
 		if !ok {
-			return "", fmt.Errorf("key %s not found in secret", vPath.Key)
+			return "", utils.NewError("key %s not found in secret", vPath.Key)
 		}
 		return value, nil
 	}

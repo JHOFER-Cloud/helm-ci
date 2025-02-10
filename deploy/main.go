@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"fmt"
+	"helm-ci/deploy/utils"
 	"helm-ci/deploy/vault"
 	"io"
 	"net/http"
@@ -64,26 +65,26 @@ func parseFlags() *Config {
 	flag.BoolVar(&cfg.TraefikDashboard, "traefik-dashboard", false, "Deploy Traefik dashboard")
 	flag.StringVar(&cfg.RootCA, "root-ca", "", "Path to root CA certificate")
 	flag.BoolVar(&cfg.PRDeployments, "pr-deployments", true, "Enable PR deployments")
-	// New Vault-related flags
 	flag.StringVar(&cfg.VaultURL, "vault-url", "", "Vault server URL")
 	flag.StringVar(&cfg.VaultToken, "vault-token", os.Getenv("VAULT_TOKEN"), "Vault authentication token")
 	flag.StringVar(&cfg.VaultBasePath, "vault-base-path", "", "Base path for Vault secrets")
 	flag.BoolVar(&cfg.VaultInsecureTLS, "vault-insecure-tls", false, "Allow insecure TLS connections to Vault (not recommended for production)")
 	flag.IntVar(&cfg.VaultKVVersion, "vault-kv-version", 2, "Vault KV version (1 or 2)")
+	flag.BoolVar(&cfg.DEBUG, "debug", false, "DEBUG output; THIS MAY OUTPUT SECRETS!!!")
 	flag.Parse()
 
 	if cfg.AppName == "" {
-		fmt.Println("app name is required")
+		utils.NewError("app name is required")
 		os.Exit(1)
 	}
 
 	if cfg.Stage == "" {
-		fmt.Println("stage is required")
+		utils.NewError("stage is required")
 		os.Exit(1)
 	}
 
 	if cfg.Environment == "" {
-		fmt.Println("environment is required")
+		utils.NewError("environment is required")
 		os.Exit(1)
 	}
 
@@ -91,7 +92,7 @@ func parseFlags() *Config {
 }
 
 func (c *Config) PrintConfig() {
-	fmt.Println("Current Configuration:")
+	utils.Log.Info("Current Configuration:")
 	v := reflect.ValueOf(c).Elem()
 	t := v.Type()
 
@@ -100,9 +101,9 @@ func (c *Config) PrintConfig() {
 		fieldName := t.Field(i).Name
 		// Don't print sensitive values
 		if fieldName == "VaultToken" || fieldName == "GitHubToken" {
-			fmt.Printf("- %s: [REDACTED]\n", fieldName)
+			utils.Log.Info(fmt.Sprintf("%s: [REDACTED]", fieldName))
 		} else {
-			fmt.Printf("- %s: %v\n", fieldName, field.Interface())
+			utils.Log.Info(fmt.Sprintf("%s: %v", fieldName, field.Interface()))
 		}
 	}
 }
@@ -138,7 +139,7 @@ func (c *Config) processValuesFileWithVault(filename string) (string, error) {
 	// Read the original values file
 	content, err := os.ReadFile(filename)
 	if err != nil {
-		return "", fmt.Errorf("failed to read values file %s: %v", filename, err)
+		return "", utils.NewError("failed to read values file %s: %v", filename, err)
 	}
 
 	// Create Vault client
@@ -150,31 +151,41 @@ func (c *Config) processValuesFileWithVault(filename string) (string, error) {
 		c.VaultInsecureTLS,
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to initialize vault client: %w", err)
+		return "", utils.NewError("failed to initialize vault client: %w", err)
 	}
 
 	// Process the content using the new method
 	processedContent, err := vaultClient.ProcessString(string(content))
 	if err != nil {
-		return "", fmt.Errorf("failed to process vault templates in file %s: %w", filename, err)
+		return "", utils.NewError("failed to process vault templates in file %s: %w", filename, err)
 	}
 
-	///DEBUG ONLY; THIS WILL PRINT THE SECRET!!!!!!!
-	// fmt.Println("=> Processed content:", processedContent)
-	// os.Exit(1)
+	if c.DEBUG {
+		utils.Log.Debugln("Processed content:")
+		fmt.Println(processedContent)
+
+		utils.Green("Looks good, deploy now? (Y/n): ")
+		var response string
+		fmt.Scanln(&response)
+
+		if response == "n" || response == "N" {
+			os.Exit(1)
+		}
+	}
 
 	// Create a temporary file for the processed values
 	tmpFile, err := os.CreateTemp("", "values-*.yml")
 	if err != nil {
-		return "", fmt.Errorf("failed to create temporary file: %v", err)
+		return "", utils.NewError("failed to create temporary file: %v", err)
 	}
 
 	// Write the processed content to the temporary file
 	if err := os.WriteFile(tmpFile.Name(), []byte(processedContent), 0644); err != nil {
 		os.Remove(tmpFile.Name()) // Clean up the temp file if write fails
-		return "", fmt.Errorf("failed to write processed values: %v", err)
+		return "", utils.NewError("failed to write processed values: %v", err)
 	}
 
+	utils.Green("Successfully processed values file: %s", tmpFile.Name())
 	return tmpFile.Name(), nil
 }
 
@@ -183,7 +194,7 @@ func (c *Config) setupRootCA() error {
 		return nil
 	}
 
-	fmt.Printf("Setting up Root CA from: %s\n", c.RootCA)
+	utils.Log.Infof("Setting up Root CA from: %s\n", c.RootCA)
 
 	var certData []byte
 	var err error
@@ -196,54 +207,54 @@ func (c *Config) setupRootCA() error {
 		client := &http.Client{Transport: tr}
 		resp, err := client.Get(c.RootCA)
 		if err != nil {
-			return fmt.Errorf("failed to download root CA: %v", err)
+			return utils.NewError("failed to download root CA: %v", err)
 		}
 		defer resp.Body.Close()
 
 		certData, err = io.ReadAll(resp.Body)
 		if err != nil {
-			return fmt.Errorf("failed to read root CA from URL: %v", err)
+			return utils.NewError("failed to read root CA from URL: %v", err)
 		}
 	} else {
 		certData, err = os.ReadFile(c.RootCA)
 		if err != nil {
-			return fmt.Errorf("failed to read root CA file: %v", err)
+			return utils.NewError("failed to read root CA file: %v", err)
 		}
 	}
 
 	// Create a temporary file to store the certificate data
 	tmpFile, err := os.CreateTemp("", "root-ca-*.crt")
 	if err != nil {
-		return fmt.Errorf("failed to create temporary file: %v", err)
+		return utils.NewError("failed to create temporary file: %v", err)
 	}
 	defer os.Remove(tmpFile.Name())
 
 	if _, err := tmpFile.Write(certData); err != nil {
-		return fmt.Errorf("failed to write to temporary file: %v", err)
+		return utils.NewError("failed to write to temporary file: %v", err)
 	}
 	if err := tmpFile.Close(); err != nil {
-		return fmt.Errorf("failed to close temporary file: %v", err)
+		return utils.NewError("failed to close temporary file: %v", err)
 	}
 
 	// Create namespace
-	fmt.Printf("Creating namespace: %s\n", c.Namespace)
+	utils.Log.Infof("Creating namespace: %s\n", c.Namespace)
 	var nsBuffer bytes.Buffer
 	createNsCmd := exec.Command("kubectl", "create", "namespace", c.Namespace, "--dry-run=client", "-o", "yaml")
 	createNsCmd.Stdout = &nsBuffer
 
 	if err := createNsCmd.Run(); err != nil {
-		return fmt.Errorf("failed to create namespace yaml: %v", err)
+		return utils.NewError("failed to create namespace yaml: %v", err)
 	}
 
 	applyNsCmd := exec.Command("kubectl", "apply", "-f", "-")
 	applyNsCmd.Stdin = bytes.NewReader(nsBuffer.Bytes())
 
 	if err := applyNsCmd.Run(); err != nil {
-		return fmt.Errorf("failed to apply namespace: %v", err)
+		return utils.NewError("failed to apply namespace: %v", err)
 	}
 
 	// Create secret
-	fmt.Printf("Creating CA secret in namespace: %s\n", c.Namespace)
+	utils.Log.Infof("Creating CA secret in namespace: %s\n", c.Namespace)
 	var secretBuffer bytes.Buffer
 	secretCmd := exec.Command("kubectl", "create", "secret", "generic",
 		"custom-root-ca",
@@ -254,17 +265,17 @@ func (c *Config) setupRootCA() error {
 	secretCmd.Stdout = &secretBuffer
 
 	if err := secretCmd.Run(); err != nil {
-		return fmt.Errorf("failed to create secret yaml: %v", err)
+		return utils.NewError("failed to create secret yaml: %v", err)
 	}
 
 	applySecretCmd := exec.Command("kubectl", "apply", "-f", "-")
 	applySecretCmd.Stdin = bytes.NewReader(secretBuffer.Bytes())
 
 	if err := applySecretCmd.Run(); err != nil {
-		return fmt.Errorf("failed to apply secret: %v", err)
+		return utils.NewError("failed to apply secret: %v", err)
 	}
 
-	fmt.Println("Root CA setup completed successfully")
+	utils.Success("Root CA setup completed successfully")
 	return nil
 }
 
@@ -301,14 +312,10 @@ func extractYAMLContent(helmOutput []byte) ([]byte, error) {
 
 func (c *Config) getDiff(args []string, isHelm bool) error {
 	if isHelm {
-		// Get current state
 		currentCmd := exec.Command("helm", "get", "manifest", c.ReleaseName, "-n", c.Namespace)
 		current, err := currentCmd.Output()
 		if err != nil {
-			// If release doesn't exist, show what would be installed
-			fmt.Println("No existing release found. Showing what would be installed:")
-
-			// Add --dry-run flag to show what would be installed
+			utils.Log.Info("No existing release found. Showing what would be installed:")
 			dryRunArgs := append(args, "--dry-run")
 			cmd := exec.Command("helm", dryRunArgs...)
 			cmd.Stdout = os.Stdout
@@ -316,96 +323,44 @@ func (c *Config) getDiff(args []string, isHelm bool) error {
 			return cmd.Run()
 		}
 
-		// Get proposed state
 		dryRunArgs := append(args, "--dry-run")
 		proposedCmd := exec.Command("helm", dryRunArgs...)
 		proposed, err := proposedCmd.Output()
 		if err != nil {
-			return fmt.Errorf("failed to get proposed state: %v", err)
+			return utils.NewError("failed to get proposed state: %v", err)
 		}
 
-		// Extract YAML content from Helm output
 		proposedYAML, err := extractYAMLContent(proposed)
 		if err != nil {
-			return fmt.Errorf("failed to extract YAML content: %v", err)
+			return utils.NewError("failed to extract YAML content: %v", err)
 		}
 
-		// Create diff using kubectl diff
-		return c.showResourceDiff(current, proposedYAML)
+		return utils.ShowResourceDiff(current, proposedYAML, c.DEBUG)
 	} else {
-		// For kubectl, use kubectl diff directly
 		for _, manifest := range args {
 			cmd := exec.Command("kubectl", "diff", "-f", manifest, "-n", c.Namespace)
-			output, err := cmd.Output()
-			if err != nil {
-				// Exit code 1 means differences were found, which is expected
-				if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
-					return fmt.Errorf("failed to get diff for %s: %v", manifest, err)
-				}
-			}
+			output, err := cmd.CombinedOutput()
 
 			if len(output) == 0 {
-				// If no diff, show what would be applied
-				fmt.Printf("\nNo existing resources found for %s. Showing what would be applied:\n", manifest)
+				utils.Log.Infof("\nNo existing resources found for %s. Showing what would be applied:\n", manifest)
 				showCmd := exec.Command("kubectl", "apply", "-f", manifest, "-n", c.Namespace, "--dry-run=client", "-o", "yaml")
 				showCmd.Stdout = os.Stdout
 				showCmd.Stderr = os.Stderr
 				if err := showCmd.Run(); err != nil {
-					return fmt.Errorf("failed to show resources for %s: %v", manifest, err)
+					return utils.NewError("failed to show resources for %s: %v", manifest, err)
 				}
 			} else {
-				fmt.Printf("\nDiff for %s:\n", manifest)
-				fmt.Println(string(output))
+				utils.Success("\nDiff for %s:\n", manifest)
+				fmt.Println(utils.ColorizeKubectlDiff(string(output)))
+			}
+
+			if err != nil {
+				if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
+					return utils.NewError("failed to get diff for %s: %v", manifest, err)
+				}
 			}
 		}
 	}
-	return nil
-}
-
-func (c *Config) showResourceDiff(current, proposed []byte) error {
-	// Create temporary files for diff
-	currentFile, err := os.CreateTemp("", "current-*.yaml")
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %v", err)
-	}
-	defer os.Remove(currentFile.Name())
-
-	proposedFile, err := os.CreateTemp("", "proposed-*.yaml")
-	if err != nil {
-		return fmt.Errorf("failed to create temp file: %v", err)
-	}
-	defer os.Remove(proposedFile.Name())
-
-	// Write resources to temp files
-	if err := os.WriteFile(currentFile.Name(), current, 0644); err != nil {
-		return fmt.Errorf("failed to write current state: %v", err)
-	}
-	if err := os.WriteFile(proposedFile.Name(), proposed, 0644); err != nil {
-		return fmt.Errorf("failed to write proposed state: %v", err)
-	}
-
-	if c.DEBUG {
-		// Print the contents of the files for debugging
-		fmt.Println("Current YAML:")
-		fmt.Println(string(current))
-
-		fmt.Println("Proposed YAML:")
-		fmt.Println(string(proposed))
-	}
-
-	// Use diff to show differences with color
-	diffCmd := exec.Command("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
-	diffCmd.Stdout = os.Stdout
-	diffCmd.Stderr = os.Stderr
-
-	err = diffCmd.Run()
-	if err != nil {
-		// Exit code 1 means differences were found, which is expected
-		if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {
-			return fmt.Errorf("failed to generate diff: %v", err)
-		}
-	}
-
 	return nil
 }
 
@@ -450,11 +405,11 @@ func (c *Config) deployHelm() error {
 
 	// Add helm repo for all apps
 	if err := exec.Command("helm", "repo", "add", c.AppName, c.Repository).Run(); err != nil {
-		return fmt.Errorf("failed to add Helm repository: %v", err)
+		return utils.NewError("failed to add Helm repository: %v", err)
 	}
 
 	if err := exec.Command("helm", "repo", "update").Run(); err != nil {
-		return fmt.Errorf("failed to update Helm repository: %v", err)
+		return utils.NewError("failed to update Helm repository: %v", err)
 	}
 
 	if c.Domain != "" {
@@ -503,7 +458,7 @@ func (c *Config) deployHelm() error {
 	args = append(args, c.getRootCAArgs()...)
 
 	// Show diff first
-	fmt.Println("Showing differences:")
+	utils.Green("Showing differences:")
 	if err := c.getDiff(args, true); err != nil {
 		return err
 	}
@@ -519,7 +474,7 @@ func (c *Config) deployHelm() error {
 func (c *Config) deployCustom() error {
 	manifests, err := filepath.Glob(filepath.Join(c.ValuesPath, "*.yml"))
 	if err != nil {
-		return fmt.Errorf("failed to find manifests: %v", err)
+		return utils.NewError("failed to find manifests: %v", err)
 	}
 
 	// Process manifests with Vault templating
@@ -536,7 +491,7 @@ func (c *Config) deployCustom() error {
 	}
 
 	// Show diff first
-	fmt.Println("Showing differences:")
+	utils.Green("Showing differences:")
 	if err := c.getDiff(processedManifests, false); err != nil {
 		return err
 	}
@@ -548,7 +503,7 @@ func (c *Config) deployCustom() error {
 		cmd.Stderr = os.Stderr
 
 		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("failed to apply manifest %s: %v", manifest, err)
+			return utils.NewError("failed to apply manifest %s: %v", manifest, err)
 		}
 	}
 
@@ -559,11 +514,12 @@ func main() {
 	cfg := parseFlags()
 	cfg.setupNames()
 	cfg.PrintConfig()
+	utils.InitLogger(cfg.DEBUG)
 
 	if err := cfg.Deploy(); err != nil {
-		fmt.Printf("Deployment failed: %v\n", err)
+		utils.NewError("Deployment failed: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Println("Deployment succeeded")
+	utils.Success("Deployment succeeded")
 }

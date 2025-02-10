@@ -1,7 +1,7 @@
 package vault
 
 import (
-	"fmt"
+	"helm-ci/deploy/utils"
 	"regexp"
 	"strings"
 )
@@ -15,7 +15,7 @@ func (c *Client) ProcessString(input string) (string, error) {
 	for _, placeholder := range matches {
 		secretValue, err := c.GetSecret(placeholder)
 		if err != nil {
-			return "", fmt.Errorf("failed to process placeholder %s: %w", placeholder, err)
+			return "", utils.NewError("failed to process placeholder %s: %w", placeholder, err)
 		}
 
 		// Check if the secret value contains newlines
