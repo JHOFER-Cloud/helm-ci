@@ -1,3 +1,10 @@
+# [1.0.0-dev.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2025-02-11)
+
+
+### Bug Fixes
+
+* cant comment on pull request ([5c7f4f3](https://github.com/JHOFER-Cloud/helm-ci/commit/5c7f4f3c7bcc7cacc07351caa8118f82df0bc6f0))
+
 # [1.0.0-dev.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2025-02-10)
 
 
