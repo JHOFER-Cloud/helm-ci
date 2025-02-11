@@ -1,0 +1,7 @@
+RUN apt-get update && apt-get install -y ca-certificates curl
+
+# Download the custom CA certificate
+RUN curl -o /usr/local/share/ca-certificates/custom-ca.crt https://pki.jhofer.lan/certs/root-ca.pem
+
+# Update CA certificates
+RUN update-ca-certificates
