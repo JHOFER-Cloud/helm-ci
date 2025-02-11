@@ -30,4 +30,4 @@ jobs:
           context: .
           file: Dockerfile.CA
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/jhc-ca:latest
+          tags: ghcr.io/jhofer-cloud/jhc-ca:latest
