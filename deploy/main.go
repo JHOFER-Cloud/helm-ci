@@ -218,7 +218,7 @@ func (c *Config) processValuesFileWithVault(filename string) (string, error) {
 		return "", utils.NewError("failed to write processed values: %v", err)
 	}
 
-	utils.Green("Successfully processed values file: %s", tmpFile.Name())
+	utils.Log.Infof("Successfully processed values file: %s", tmpFile.Name())
 	return tmpFile.Name(), nil
 }
 
