@@ -424,17 +424,17 @@ func (c *Config) getTraefikDashboardArgs() []string {
 }
 
 // FIX: Mounting CA file not working (secret gets created)
-// spec.template.spec.containers[0].volumeMounts[2].mountPath: Required value
+// add logic that looks for a free index instead of overwriting [0]
 func (c *Config) getRootCAArgs() []string {
 	var args []string
 
 	if c.RootCA != "" {
-		args = append(args,
-			"--set", "volumes[0].name=custom-root-ca",
-			"--set", "volumes[0].secretName=custom-root-ca",
-			"--set", "volumes[0].mountPath=/etc/ssl/certs",
-			"--set", "volumes[0].subPath=ca.crt",
-		)
+		// args = append(args,
+		// 	"--set", "volumes[0].name=custom-root-ca",
+		// 	"--set", "volumes[0].secretName=custom-root-ca",
+		// 	"--set", "volumes[0].mountPath=/etc/ssl/certs",
+		// 	"--set", "volumes[0].subPath=ca.crt",
+		// )
 	}
 
 	return args
