@@ -2,11 +2,19 @@
 
 ## Usage
 
-README IS OUTDATED, LOOK INTO EXAMPLES!!
+README IS OUTDATED, SEE BELOW PUBLIC EXAMPLES!!
 
 Examples:
 
 - [helm-traefik](https://github.com/JHOFER-Cloud/helm-traefik)
+
+Examples (vault):
+
+- [helm-renovate](https://github.com/JHOFER-Cloud/helm-renovate)
+
+Examples (custom):
+
+- 
 
 ### Custom values, no chart
 
