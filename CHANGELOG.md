@@ -3,6 +3,7 @@
 
 ### Bug Fixes
 
+=====
 * ca mount ([a98a7b0](https://github.com/JHOFER-Cloud/helm-ci/commit/a98a7b00d7878e7ba7241e041fff7aad7538526b))
 * chart name wrong ([30ab037](https://github.com/JHOFER-Cloud/helm-ci/commit/30ab037260ac7c6a8a5831bbd5f84050f28d9578))
 * **ci:** correct tag evaluation logic in Docker workflow ([17e39ba](https://github.com/JHOFER-Cloud/helm-ci/commit/17e39babf48c5fbf77637d306acaf789d29f3d23))
