@@ -1,3 +1,10 @@
+## [2.0.1-dev.7](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.6...v2.0.1-dev.7) (2025-02-14)
+
+
+### Bug Fixes
+
+* **ci-image:** issue was traefik replica didnt have access to acme storage ([712132c](https://github.com/JHOFER-Cloud/helm-ci/commit/712132cbb712c185b809bd53ae3755656901831a))
+
 ## [2.0.1-dev.6](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.5...v2.0.1-dev.6) (2025-02-14)
 
 
