@@ -8,8 +8,8 @@ on:
       custom_namespace:
         required: false
         type: string
-      container_image_tag:
-        required: false
+      helm-ci_image_tag:
+        required: true
         type: string
         default: latest
       helm_repository:
@@ -77,7 +77,7 @@ jobs:
     runs-on: self-hosted-ubuntu-24.10
     environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
     container:
-      image: ghcr.io/jhofer-cloud/helm-ci:${{ inputs.container_image_tag }}
+      image: ghcr.io/jhofer-cloud/helm-ci:${{ inputs.helm-ci_image_tag }}
     steps:
       - name: Set deployment variables
         id: vars
