@@ -1,7 +1,7 @@
 FROM golang:1.24-alpine
 
-# Install curl and ca-certificates
-RUN apk add --no-cache curl ca-certificates
+# Install curl, ca-certificates, and openssl
+RUN apk add --no-cache curl ca-certificates openssl
 
 # Download your root CA PEM file
 RUN curl -o /usr/local/share/ca-certificates/root-ca.pem http://pki.jhofer.lan/certs/root-ca.pem
