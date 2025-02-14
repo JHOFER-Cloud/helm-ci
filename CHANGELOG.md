@@ -1,3 +1,10 @@
+## [1.0.3-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.3-dev.1...v1.0.3-dev.2) (2025-02-14)
+
+
+### Bug Fixes
+
+* old container image was used ([b94760f](https://github.com/JHOFER-Cloud/helm-ci/commit/b94760f3df34b8d23183166436c66300775b949f))
+
 ## [1.0.3-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.2...v1.0.3-dev.1) (2025-02-14)
 
 
