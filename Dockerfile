@@ -7,8 +7,7 @@ RUN apk add --no-cache curl ca-certificates
 RUN curl -o /usr/local/share/ca-certificates/root-ca.pem http://pki.jhofer.lan/certs/root-ca.pem
 
 # Update the CA certificates
-RUN mv /usr/local/share/ca-certificates/root-ca.pem /usr/local/share/ca-certificates/root-ca.crt && \
-    update-ca-certificates
+RUN cat /usr/local/share/ca-certificates/root-ca.pem >> /etc/ssl/certs/ca-certificates.crt
 
 WORKDIR /app
 COPY . .
