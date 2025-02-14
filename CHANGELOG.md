@@ -1,3 +1,10 @@
+## [2.0.1-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.1...v2.0.1-dev.2) (2025-02-14)
+
+
+### Bug Fixes
+
+* pki not reachable ([60c9749](https://github.com/JHOFER-Cloud/helm-ci/commit/60c97498704fee83879511c2771a235e7f134f01))
+
 ## [2.0.1-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.0...v2.0.1-dev.1) (2025-02-14)
 
 
