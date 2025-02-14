@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.1...v1.0.2) (2025-02-14)
+
+
+### Bug Fixes
+
+* semantic_release ([73fcc51](https://github.com/JHOFER-Cloud/helm-ci/commit/73fcc51ce7baeaa67369a07b64a6a4a44a690393))
+
 ## [1.0.2-dev.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.2-dev.2...v1.0.2-dev.3) (2025-02-14)
 
 
