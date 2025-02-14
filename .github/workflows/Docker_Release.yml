@@ -60,12 +60,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          semantic-release --dry-run
           version=$(semantic-release --dry-run | grep "next release version is" | sed -E 's/.* ([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?).*/\1/')
+          echo -e "\033[1;32mDry run version: $version\033[0m"
           if [ ! -z "$version" ]; then
-            echo -e "\033[1;32mDry run version: $version\033[0m"
             echo "version=$version" >> $GITHUB_OUTPUT
             semantic-release
           fi
+
       - name: Login to GitHub Container Registry
         if: steps.semantic_release.outputs.version != ''
         uses: docker/login-action@v3
