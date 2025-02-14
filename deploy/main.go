@@ -445,6 +445,8 @@ func (c *Config) deployHelm() error {
 		return err
 	}
 
+	c.Chart = fmt.Sprintf("%s/%s", c.AppName, c.Chart)
+
 	var args []string
 	args = append(args, "upgrade", "--install", c.ReleaseName, c.Chart)
 	args = append(args, "--namespace", c.Namespace, "--create-namespace")
