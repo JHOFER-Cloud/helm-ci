@@ -1,3 +1,10 @@
+## [2.0.1-dev.6](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.5...v2.0.1-dev.6) (2025-02-14)
+
+
+### Bug Fixes
+
+* **ci-image:** overcomplicated it... ([e3f49fc](https://github.com/JHOFER-Cloud/helm-ci/commit/e3f49fc2c294497c760a3d83928bc2720d3c51f5))
+
 ## [2.0.1-dev.5](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.4...v2.0.1-dev.5) (2025-02-14)
 
 
