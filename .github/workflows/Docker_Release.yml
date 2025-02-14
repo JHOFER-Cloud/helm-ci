@@ -60,9 +60,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          semantic-release --dry-run
           version=$(semantic-release --dry-run | grep "next release version is" | sed -E 's/.* ([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?).*/\1/')
-          echo "Dry run version: $version"
           if [ ! -z "$version" ]; then
             echo "version=$version" >> $GITHUB_OUTPUT
             semantic-release
