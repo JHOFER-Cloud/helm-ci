@@ -1,3 +1,17 @@
+# [2.0.0](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.3...v2.0.0) (2025-02-14)
+
+
+### Bug Fixes
+
+* old container image was used ([bc5a8ef](https://github.com/JHOFER-Cloud/helm-ci/commit/bc5a8efc0cb9dffef3f4f1dd99fdc1e48077e646))
+* old container image was used ([b94760f](https://github.com/JHOFER-Cloud/helm-ci/commit/b94760f3df34b8d23183166436c66300775b949f))
+
+
+### BREAKING CHANGES
+
+* helm-ci_image_tag input needs to be set (at best to the
+same version as the workflow input, renovate is your friend ;))
+
 ## [1.0.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.2...v1.0.3) (2025-02-14)
 
 
