@@ -1,3 +1,11 @@
+## [2.0.1-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.0...v2.0.1-dev.1) (2025-02-14)
+
+
+### Bug Fixes
+
+* CA certificate missing in docker container ([5d08405](https://github.com/JHOFER-Cloud/helm-ci/commit/5d084057b2596e3954f42206e595aa2c666dc16a))
+* default vault kvVersion (2) ([4438d5c](https://github.com/JHOFER-Cloud/helm-ci/commit/4438d5cd0b8a010a975747a7b274002e78b4ee28))
+
 # [2.0.0](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.3...v2.0.0) (2025-02-14)
 
 
