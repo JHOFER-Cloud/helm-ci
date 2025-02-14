@@ -1,3 +1,10 @@
+## [2.0.1-dev.4](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.3...v2.0.1-dev.4) (2025-02-14)
+
+
+### Bug Fixes
+
+* **ci-image:** ca cert not working ([9de11aa](https://github.com/JHOFER-Cloud/helm-ci/commit/9de11aa0b02653d55a47541e2a6ea88648e61429))
+
 ## [2.0.1-dev.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.2...v2.0.1-dev.3) (2025-02-14)
 
 
