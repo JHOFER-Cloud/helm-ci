@@ -1,3 +1,10 @@
+## [2.0.1-dev.5](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.4...v2.0.1-dev.5) (2025-02-14)
+
+
+### Bug Fixes
+
+* **ci-image:** now ca should work ([12dbb1f](https://github.com/JHOFER-Cloud/helm-ci/commit/12dbb1f7d9054b5e2c76d13e4586ac5a128da2c5))
+
 ## [2.0.1-dev.4](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.3...v2.0.1-dev.4) (2025-02-14)
 
 
