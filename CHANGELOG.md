@@ -1,3 +1,10 @@
+## [2.0.1-dev.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.2...v2.0.1-dev.3) (2025-02-14)
+
+
+### Bug Fixes
+
+* **ci-image:** missing openssl package ([c503ccf](https://github.com/JHOFER-Cloud/helm-ci/commit/c503ccfdd2d55e0fb147c2e578d45da7415b403e))
+
 ## [2.0.1-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.1...v2.0.1-dev.2) (2025-02-14)
 
 
