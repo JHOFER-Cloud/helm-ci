@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.2...v1.0.3) (2025-02-14)
+
+
+### Bug Fixes
+
+* chart name not working ([61ef887](https://github.com/JHOFER-Cloud/helm-ci/commit/61ef887ac7e1124cb34a4376fc1ec0a2f7326ce2))
+
 ## [1.0.3-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v1.0.2...v1.0.3-dev.1) (2025-02-14)
 
 
