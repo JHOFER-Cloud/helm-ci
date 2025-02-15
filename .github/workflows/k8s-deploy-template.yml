@@ -42,6 +42,7 @@ on:
       vault_kv_version:
         required: false
         type: number
+        default: 2
       dev_domain:
         required: false
         type: string

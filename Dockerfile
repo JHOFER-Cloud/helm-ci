@@ -1,7 +1,12 @@
 FROM golang:1.24-alpine
 
-# Install curl
-RUN apk add --no-cache curl
+# Install curl and ca-certificates
+RUN apk add --no-cache curl ca-certificates
+
+# Download and set up the CA certificate
+RUN curl -o /usr/local/share/ca-certificates/root-ca.crt http://pki.jhofer.lan/certs/root-ca.pem \
+    && cp /usr/local/share/ca-certificates/root-ca.crt /etc/ssl/certs/root-ca.crt \
+    && update-ca-certificates
 
 WORKDIR /app
 COPY . .
