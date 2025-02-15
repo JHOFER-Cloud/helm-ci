@@ -441,10 +441,6 @@ func (c *Config) deployHelm() error {
 	// Check if the repository is an OCI registry
 	if strings.HasPrefix(c.Repository, "oci://") {
 		args = append(args, fmt.Sprintf("%s/%s", c.Repository, c.Chart))
-		// Login to OCI registry
-		if err := exec.Command("helm", "registry", "login", c.Repository).Run(); err != nil {
-			return utils.NewError("failed to login to OCI registry: %v", err)
-		}
 	} else {
 		args = append(args, fmt.Sprintf("%s/%s", c.AppName, c.Chart))
 		// Add helm repo for all apps
