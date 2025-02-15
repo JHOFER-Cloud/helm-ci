@@ -1,4 +1,4 @@
-## [2.0.2-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1...v2.0.2-dev.1) (2025-02-15)
+## [2.0.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1...v2.0.2) (2025-02-15)
 
 
 ### Bug Fixes
