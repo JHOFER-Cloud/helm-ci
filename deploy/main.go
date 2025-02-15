@@ -436,17 +436,28 @@ func (c *Config) deployHelm() error {
 	}
 
 	var args []string
-	args = append(args, "upgrade", "--install", c.ReleaseName, fmt.Sprintf("%s/%s", c.AppName, c.Chart))
+	args = append(args, "upgrade", "--install", c.ReleaseName)
+
+	// Check if the repository is an OCI registry
+	if strings.HasPrefix(c.Repository, "oci://") {
+		args = append(args, fmt.Sprintf("%s/%s", c.Repository, c.Chart))
+		// Login to OCI registry
+		if err := exec.Command("helm", "registry", "login", c.Repository).Run(); err != nil {
+			return utils.NewError("failed to login to OCI registry: %v", err)
+		}
+	} else {
+		args = append(args, fmt.Sprintf("%s/%s", c.AppName, c.Chart))
+		// Add helm repo for all apps
+		if err := exec.Command("helm", "repo", "add", c.AppName, c.Repository).Run(); err != nil {
+			return utils.NewError("failed to add Helm repository: %v", err)
+		}
+
+		if err := exec.Command("helm", "repo", "update").Run(); err != nil {
+			return utils.NewError("failed to update Helm repository: %v", err)
+		}
+	}
+
 	args = append(args, "--namespace", c.Namespace, "--create-namespace")
-
-	// Add helm repo for all apps
-	if err := exec.Command("helm", "repo", "add", c.AppName, c.Repository).Run(); err != nil {
-		return utils.NewError("failed to add Helm repository: %v", err)
-	}
-
-	if err := exec.Command("helm", "repo", "update").Run(); err != nil {
-		return utils.NewError("failed to update Helm repository: %v", err)
-	}
 
 	if c.Domain != "" {
 		if strings.Contains(c.AppName, "vault") {
