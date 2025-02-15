@@ -1,3 +1,10 @@
+## [2.0.4-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.4-dev.1...v2.0.4-dev.2) (2025-02-15)
+
+
+### Bug Fixes
+
+* manifest deployment doesnt create naemspace if it doesnt exist ([d520e18](https://github.com/JHOFER-Cloud/helm-ci/commit/d520e18a20e0acb678602050a1c0c40ffdf2f9ad))
+
 ## [2.0.4-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.3...v2.0.4-dev.1) (2025-02-15)
 
 
