@@ -1,3 +1,10 @@
+## [2.0.4-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.3...v2.0.4-dev.1) (2025-02-15)
+
+
+### Bug Fixes
+
+* oci registries not working ([922410f](https://github.com/JHOFER-Cloud/helm-ci/commit/922410f2b83d1580d6a3df5c0169a406936a55ae))
+
 ## [2.0.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.2...v2.0.3) (2025-02-15)
 
 
