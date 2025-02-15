@@ -1,3 +1,10 @@
+## [2.0.2-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1...v2.0.2-dev.1) (2025-02-15)
+
+
+### Bug Fixes
+
+* requires buildx ([049c6c5](https://github.com/JHOFER-Cloud/helm-ci/commit/049c6c5163f720503d65a30459b53ad876bd2a36))
+
 ## [2.0.1-dev.8](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.7...v2.0.1-dev.8) (2025-02-15)
 
 
