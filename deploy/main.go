@@ -436,17 +436,24 @@ func (c *Config) deployHelm() error {
 	}
 
 	var args []string
-	args = append(args, "upgrade", "--install", c.ReleaseName, fmt.Sprintf("%s/%s", c.AppName, c.Chart))
+	args = append(args, "upgrade", "--install", c.ReleaseName)
+
+	// Check if the repository is an OCI registry
+	if strings.HasPrefix(c.Repository, "oci://") {
+		args = append(args, fmt.Sprintf("%s/%s", c.Repository, c.Chart))
+	} else {
+		args = append(args, fmt.Sprintf("%s/%s", c.AppName, c.Chart))
+		// Add helm repo for all apps
+		if err := exec.Command("helm", "repo", "add", c.AppName, c.Repository).Run(); err != nil {
+			return utils.NewError("failed to add Helm repository: %v", err)
+		}
+
+		if err := exec.Command("helm", "repo", "update").Run(); err != nil {
+			return utils.NewError("failed to update Helm repository: %v", err)
+		}
+	}
+
 	args = append(args, "--namespace", c.Namespace, "--create-namespace")
-
-	// Add helm repo for all apps
-	if err := exec.Command("helm", "repo", "add", c.AppName, c.Repository).Run(); err != nil {
-		return utils.NewError("failed to add Helm repository: %v", err)
-	}
-
-	if err := exec.Command("helm", "repo", "update").Run(); err != nil {
-		return utils.NewError("failed to update Helm repository: %v", err)
-	}
 
 	if c.Domain != "" {
 		if strings.Contains(c.AppName, "vault") {
@@ -524,6 +531,18 @@ func (c *Config) deployCustom() error {
 			defer os.Remove(processedFile)
 		}
 		processedManifests = append(processedManifests, processedFile)
+	}
+
+	// Check if namespace exists, create if it doesn't
+	cmd := exec.Command("kubectl", "get", "namespace", c.Namespace)
+	if err := cmd.Run(); err != nil {
+		utils.Green("Namespace %s does not exist, creating it...", c.Namespace)
+		cmd = exec.Command("kubectl", "create", "namespace", c.Namespace)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return utils.NewError("failed to create namespace %s: %v", c.Namespace, err)
+		}
 	}
 
 	// Show diff first

@@ -1,3 +1,24 @@
+## [2.0.4-dev.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.4-dev.2...v2.0.4-dev.3) (2025-02-15)
+
+
+### Bug Fixes
+
+* remove OCI login ([8a55131](https://github.com/JHOFER-Cloud/helm-ci/commit/8a5513166d7922547a14113a3d741c57d37ae093))
+
+## [2.0.4-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.4-dev.1...v2.0.4-dev.2) (2025-02-15)
+
+
+### Bug Fixes
+
+* manifest deployment doesnt create naemspace if it doesnt exist ([d520e18](https://github.com/JHOFER-Cloud/helm-ci/commit/d520e18a20e0acb678602050a1c0c40ffdf2f9ad))
+
+## [2.0.4-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.3...v2.0.4-dev.1) (2025-02-15)
+
+
+### Bug Fixes
+
+* oci registries not working ([922410f](https://github.com/JHOFER-Cloud/helm-ci/commit/922410f2b83d1580d6a3df5c0169a406936a55ae))
+
 ## [2.0.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.2...v2.0.3) (2025-02-15)
 
 
