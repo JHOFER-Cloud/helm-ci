@@ -2,7 +2,7 @@
 
 ## Usage
 
-Example repo with a test apache repo:
+Example repo with a test apache helm and manifest deployment:
 <https://github.com/JHOFER-Cloud/helm-test>
 
 ## Vault Integration
