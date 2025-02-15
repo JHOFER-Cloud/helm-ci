@@ -16,7 +16,7 @@ import (
 	"reflect"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -387,18 +387,8 @@ func (c *Config) getDiff(args []string, isHelm bool) error {
 			cmd := exec.Command("kubectl", "diff", "-f", manifest, "-n", c.Namespace)
 			output, err := cmd.CombinedOutput()
 
-			if len(output) == 0 {
-				utils.Log.Infof("\nNo existing resources found for %s. Showing what would be applied:\n", manifest)
-				showCmd := exec.Command("kubectl", "apply", "-f", manifest, "-n", c.Namespace, "--dry-run=client", "-o", "yaml")
-				showCmd.Stdout = os.Stdout
-				showCmd.Stderr = os.Stderr
-				if err := showCmd.Run(); err != nil {
-					return utils.NewError("failed to show resources for %s: %v", manifest, err)
-				}
-			} else {
-				utils.Green("\nDiff for %s:\n", manifest)
-				fmt.Println(utils.ColorizeKubectlDiff(string(output)))
-			}
+			utils.Green("\nDiff for %s:\n", manifest)
+			fmt.Println(utils.ColorizeKubectlDiff(string(output)))
 
 			if err != nil {
 				if exitErr, ok := err.(*exec.ExitError); !ok || exitErr.ExitCode() != 1 {

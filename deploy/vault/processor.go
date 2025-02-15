@@ -1,12 +1,11 @@
 package vault
 
 import (
-	"encoding/base64"
 	"helm-ci/deploy/utils"
 	"regexp"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var vaultPlaceholderRegex = regexp.MustCompile(`<<vault\.[^>]+>>`)
@@ -54,15 +53,10 @@ func (c *Client) ProcessString(input string) (string, error) {
 		}
 
 		// Get the data section and ensure it's a map
-		if data, ok := secret["data"].(map[interface{}]interface{}); ok {
-			newData := make(map[interface{}]interface{})
-			// Base64 encode each value
+		if data, ok := secret["data"].(map[string]interface{}); ok {
+			newData := make(map[string]interface{})
 			for k, v := range data {
-				if str, ok := v.(string); ok {
-					newData[k] = base64.StdEncoding.EncodeToString([]byte(str))
-				} else {
-					newData[k] = v
-				}
+				newData[k] = v
 			}
 			secret["data"] = newData
 		}

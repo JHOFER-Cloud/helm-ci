@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 func TestParseVaultPath(t *testing.T) {
@@ -191,8 +191,8 @@ metadata:
   namespace: longhorn-system
 type: Opaque
 data:
-  CIFS_USERNAME: dGVzdC11c2Vy
-  CIFS_PASSWORD: dGVzdC1wYXNzd29yZA==`,
+  CIFS_USERNAME: test-user
+  CIFS_PASSWORD: test-password`,
 			wantErr: false,
 		},
 	}
