@@ -1,3 +1,10 @@
+## [2.0.4-dev.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.4-dev.2...v2.0.4-dev.3) (2025-02-15)
+
+
+### Bug Fixes
+
+* remove OCI login ([8a55131](https://github.com/JHOFER-Cloud/helm-ci/commit/8a5513166d7922547a14113a3d741c57d37ae093))
+
 ## [2.0.4-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.4-dev.1...v2.0.4-dev.2) (2025-02-15)
 
 
