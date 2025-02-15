@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 var vaultPlaceholderRegex = regexp.MustCompile(`<<vault\.[^>]+>>`)
@@ -54,8 +54,8 @@ func (c *Client) ProcessString(input string) (string, error) {
 		}
 
 		// Get the data section and ensure it's a map
-		if data, ok := secret["data"].(map[interface{}]interface{}); ok {
-			newData := make(map[interface{}]interface{})
+		if data, ok := secret["data"].(map[string]interface{}); ok {
+			newData := make(map[string]interface{})
 			// Base64 encode each value
 			for k, v := range data {
 				if str, ok := v.(string); ok {
