@@ -1,3 +1,17 @@
+## [2.0.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.0...v2.0.1) (2025-02-15)
+
+
+### Bug Fixes
+
+* CA certificate missing in docker container ([5d08405](https://github.com/JHOFER-Cloud/helm-ci/commit/5d084057b2596e3954f42206e595aa2c666dc16a))
+* **ci-image:** ca cert not working ([9de11aa](https://github.com/JHOFER-Cloud/helm-ci/commit/9de11aa0b02653d55a47541e2a6ea88648e61429))
+* **ci-image:** issue was traefik replica didnt have access to acme storage ([712132c](https://github.com/JHOFER-Cloud/helm-ci/commit/712132cbb712c185b809bd53ae3755656901831a))
+* **ci-image:** missing openssl package ([c503ccf](https://github.com/JHOFER-Cloud/helm-ci/commit/c503ccfdd2d55e0fb147c2e578d45da7415b403e))
+* **ci-image:** now ca should work ([12dbb1f](https://github.com/JHOFER-Cloud/helm-ci/commit/12dbb1f7d9054b5e2c76d13e4586ac5a128da2c5))
+* **ci-image:** overcomplicated it... ([e3f49fc](https://github.com/JHOFER-Cloud/helm-ci/commit/e3f49fc2c294497c760a3d83928bc2720d3c51f5))
+* default vault kvVersion (2) ([4438d5c](https://github.com/JHOFER-Cloud/helm-ci/commit/4438d5cd0b8a010a975747a7b274002e78b4ee28))
+* pki not reachable ([60c9749](https://github.com/JHOFER-Cloud/helm-ci/commit/60c97498704fee83879511c2771a235e7f134f01))
+
 ## [2.0.1-dev.7](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1-dev.6...v2.0.1-dev.7) (2025-02-14)
 
 
