@@ -1,3 +1,11 @@
+## [2.0.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.2...v2.0.3) (2025-02-15)
+
+
+### Bug Fixes
+
+* customDeployment showing secret when diff is unchanged ([3dbddba](https://github.com/JHOFER-Cloud/helm-ci/commit/3dbddbaa7222e63e09baeeff8cd085fa4abb96b2))
+* double encoding of manifest secrets ([007fbfb](https://github.com/JHOFER-Cloud/helm-ci/commit/007fbfbe57f8e2a979d68e6548abb800b9b52811))
+
 ## [2.0.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.1...v2.0.2) (2025-02-15)
 
 
