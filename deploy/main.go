@@ -537,6 +537,18 @@ func (c *Config) deployCustom() error {
 		processedManifests = append(processedManifests, processedFile)
 	}
 
+	// Check if namespace exists, create if it doesn't
+	cmd := exec.Command("kubectl", "get", "namespace", c.Namespace)
+	if err := cmd.Run(); err != nil {
+		utils.Green("Namespace %s does not exist, creating it...", c.Namespace)
+		cmd = exec.Command("kubectl", "create", "namespace", c.Namespace)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return utils.NewError("failed to create namespace %s: %v", c.Namespace, err)
+		}
+	}
+
 	// Show diff first
 	utils.Green("Showing differences:")
 	if err := c.getDiff(processedManifests, false); err != nil {
