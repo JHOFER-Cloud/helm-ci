@@ -18,6 +18,7 @@ packages=(
 total_coverage=0
 package_count=0
 failed_packages=()
+package_coverages=()
 
 go mod tidy
 
@@ -45,6 +46,7 @@ for pkg in "${packages[@]}"; do
   if [[ $coverage =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
     total_coverage=$(echo "$total_coverage + $coverage" | bc)
     package_count=$((package_count + 1))
+    package_coverages+=("$pkg: $coverage%")
   fi
 
   echo "Package $pkg coverage: $coverage%"
@@ -69,6 +71,11 @@ if [ "$package_count" -gt 0 ]; then
   avg_coverage=$(echo "scale=2; $total_coverage / $package_count" | bc)
   total_coverage=$(go tool cover -func=coverage/all.out | grep total | awk '{print $3}')
 
+  echo "================================="
+  echo "Package Coverage Summary:"
+  for pkg_coverage in "${package_coverages[@]}"; do
+    echo "  $pkg_coverage"
+  done
   echo "================================="
   echo "Average package coverage: $avg_coverage%"
   echo "Total code coverage: $total_coverage"

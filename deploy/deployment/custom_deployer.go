@@ -3,7 +3,6 @@ package deployment
 import (
 	"helm-ci/deploy/utils"
 	"os"
-	"os/exec"
 	"path/filepath"
 )
 
@@ -33,13 +32,13 @@ func (d *CustomDeployer) Deploy() error {
 	}
 
 	// Check if namespace exists, create if it doesn't
-	cmd := exec.Command("kubectl", "get", "namespace", d.Common.Config.Namespace)
-	if err := cmd.Run(); err != nil {
+	cmd := d.Cmd.Command("kubectl", "get", "namespace", d.Common.Config.Namespace)
+	if err := d.Cmd.Run(cmd); err != nil {
 		utils.Green("Namespace %s does not exist, creating it...", d.Common.Config.Namespace)
-		cmd = exec.Command("kubectl", "create", "namespace", d.Common.Config.Namespace)
+		cmd = d.Cmd.Command("kubectl", "create", "namespace", d.Common.Config.Namespace)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
+		if err := d.Cmd.Run(cmd); err != nil {
 			return utils.NewError("failed to create namespace %s: %v", d.Common.Config.Namespace, err)
 		}
 	}
@@ -52,11 +51,11 @@ func (d *CustomDeployer) Deploy() error {
 
 	// Proceed with actual deployment
 	for _, manifest := range processedManifests {
-		cmd := exec.Command("kubectl", "apply", "-f", manifest, "-n", d.Common.Config.Namespace)
+		cmd := d.Cmd.Command("kubectl", "apply", "-f", manifest, "-n", d.Common.Config.Namespace)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
-		if err := cmd.Run(); err != nil {
+		if err := d.Cmd.Run(cmd); err != nil {
 			return utils.NewError("failed to apply manifest %s: %v", manifest, err)
 		}
 	}

@@ -108,6 +108,34 @@ func TestGetSecret(t *testing.T) {
 					"test-key": "test-value"
 				}
 			}`))
+		case "/v1/secret/data/missing/key":
+			// KV v2 response with missing key
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"data": {
+					"data": {
+						"other-key": "other-value"
+					}
+				}
+			}`))
+		case "/v1/secret/missing/key":
+			// KV v1 response with missing key
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{
+				"data": {
+					"other-key": "other-value"
+				}
+			}`))
+		case "/v1/secret/data/invalid/json":
+		case "/v1/secret/invalid/json":
+			// Invalid JSON response
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{not valid json`))
+		case "/v1/secret/data/forbidden":
+		case "/v1/secret/forbidden":
+			// Forbidden response
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"errors":["permission denied"]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -172,6 +200,91 @@ func TestGetSecret(t *testing.T) {
 			placeholder: "<<vault.test/path/test-key>>",
 			expectError: true,
 		},
+		// NEW TEST CASES BELOW
+		{
+			name: "kv v2 missing key",
+			client: &Client{
+				baseURL:    server.URL,
+				token:      "test-token",
+				basePath:   "secret",
+				kvVersion:  KVv2,
+				httpClient: http.DefaultClient,
+			},
+			placeholder: "<<vault.missing/key/test-key>>",
+			expectError: true,
+		},
+		{
+			name: "kv v1 missing key",
+			client: &Client{
+				baseURL:    server.URL,
+				token:      "test-token",
+				basePath:   "secret",
+				kvVersion:  KVv1,
+				httpClient: http.DefaultClient,
+			},
+			placeholder: "<<vault.missing/key/test-key>>",
+			expectError: true,
+		},
+		{
+			name: "kv v2 invalid JSON response",
+			client: &Client{
+				baseURL:    server.URL,
+				token:      "test-token",
+				basePath:   "secret",
+				kvVersion:  KVv2,
+				httpClient: http.DefaultClient,
+			},
+			placeholder: "<<vault.invalid/json/test-key>>",
+			expectError: true,
+		},
+		{
+			name: "kv v1 invalid JSON response",
+			client: &Client{
+				baseURL:    server.URL,
+				token:      "test-token",
+				basePath:   "secret",
+				kvVersion:  KVv1,
+				httpClient: http.DefaultClient,
+			},
+			placeholder: "<<vault.invalid/json/test-key>>",
+			expectError: true,
+		},
+		{
+			name: "forbidden response",
+			client: &Client{
+				baseURL:    server.URL,
+				token:      "test-token",
+				basePath:   "secret",
+				kvVersion:  KVv2,
+				httpClient: http.DefaultClient,
+			},
+			placeholder: "<<vault.forbidden/test-key>>",
+			expectError: true,
+		},
+		{
+			name: "non-existent path",
+			client: &Client{
+				baseURL:    server.URL,
+				token:      "test-token",
+				basePath:   "secret",
+				kvVersion:  KVv2,
+				httpClient: http.DefaultClient,
+			},
+			placeholder: "<<vault.nonexistent/path/test-key>>",
+			expectError: true,
+		},
+		{
+			name: "network error - invalid server URL",
+			client: &Client{
+				baseURL:    "https://nonexistent.server.example.com",
+				token:      "test-token",
+				basePath:   "secret",
+				kvVersion:  KVv2,
+				httpClient: http.DefaultClient,
+			},
+			placeholder: "<<vault.test/path/test-key>>",
+			expectError: true,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -193,5 +306,73 @@ func TestGetSecret(t *testing.T) {
 				t.Errorf("Expected value %q, got %q", tc.expected, value)
 			}
 		})
+	}
+}
+
+// Test error conditions for ProcessString
+func TestProcessString_ErrorConditions(t *testing.T) {
+	// Create a test server that simulates Vault responses
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Check the request has the correct token
+		if r.Header.Get("X-Vault-Token") != "test-token" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		// Path that returns a 404
+		if r.URL.Path == "/v1/secret/data/not-found" {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte(`{"errors":["secret not found"]}`))
+			return
+		}
+
+		// Path that returns invalid JSON
+		if r.URL.Path == "/v1/secret/data/invalid-json" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(`{invalid json`))
+			return
+		}
+	}))
+	defer server.Close()
+
+	client := &Client{
+		baseURL:    server.URL,
+		token:      "test-token",
+		basePath:   "secret",
+		kvVersion:  KVv2,
+		httpClient: http.DefaultClient,
+	}
+
+	// Test with invalid placeholder
+	_, err := client.ProcessString("This is a test with <<vault.invalid>> placeholder")
+	if err == nil {
+		t.Errorf("Expected error for invalid placeholder, got nil")
+	}
+
+	// Test with non-existent secret
+	_, err = client.ProcessString("This is a test with <<vault.not-found/key>> placeholder")
+	if err == nil {
+		t.Errorf("Expected error for non-existent secret, got nil")
+	}
+
+	// Test with invalid JSON response
+	_, err = client.ProcessString("This is a test with <<vault.invalid-json/key>> placeholder")
+	if err == nil {
+		t.Errorf("Expected error for invalid JSON response, got nil")
+	}
+
+	// Test with invalid YAML for Kubernetes Secret
+	result, err := client.ProcessString(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-secret
+type: Opaque
+data:
+  key: <<vault.test/path/test-key>>
+  invalid: [this is not valid YAML for a Secret value]
+`)
+	if err == nil {
+		t.Errorf("Expected error for invalid Secret YAML, got nil: %s", result)
 	}
 }

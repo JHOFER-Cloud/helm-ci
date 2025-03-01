@@ -11,6 +11,9 @@ import (
 
 var Log = logrus.New()
 
+// Make exec.Command mockable for testing
+var execCommand = exec.Command
+
 const (
 	checkMark   = "✓"
 	greenColor  = "\033[32m"
@@ -61,24 +64,6 @@ func NewError(format string, args ...interface{}) error {
 	return err
 }
 
-// Usage examples:
-// Log.Info("Processing file...")
-// NewError("Failed to process: %v", err)
-// Log.WithFields(logrus.Fields{
-//     "file": filename,
-//     "size": size,
-// }).Debug("Processing file")
-// Create an error:
-// if kvVersion != KVv1 && kvVersion != KVv2 {
-//     return nil, utils.NewError("invalid KV version: must be 1 or 2")
-// }
-// And for wrapping existing errors:
-// if err != nil {
-//     return utils.WrapError(err, "failed to process request")
-// }
-// utils.Success("Operation completed successfully")
-// utils.Success("Processed %d items", count)
-
 func ColorizeKubectlDiff(diffOutput string) string {
 	lines := strings.Split(diffOutput, "\n")
 	var colorized []string
@@ -127,7 +112,8 @@ func ShowResourceDiff(current, proposed []byte, debug bool) error {
 		fmt.Println(string(proposed))
 	}
 
-	diffCmd := exec.Command("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
+	// Use the mockable execCommand instead of exec.Command directly
+	diffCmd := execCommand("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
 	output, err := diffCmd.CombinedOutput()
 
 	if len(output) > 0 {

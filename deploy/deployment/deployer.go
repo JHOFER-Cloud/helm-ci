@@ -25,6 +25,15 @@ type Deployer interface {
 // Common contains shared functionality for all deployers
 type Common struct {
 	Config *config.Config
+	Cmd    Commander
+}
+
+// NewCommon creates a new Common with default configuration
+func NewCommon(cfg *config.Config) Common {
+	return Common{
+		Config: cfg,
+		Cmd:    &RealCommander{},
+	}
 }
 
 // ProcessValuesFileWithVault processes a values file with Vault templating
@@ -168,24 +177,24 @@ func (c *Common) SetupRootCA() error {
 	// Create namespace
 	utils.Log.Infof("Creating namespace: %s\n", c.Config.Namespace)
 	var nsBuffer bytes.Buffer
-	createNsCmd := exec.Command("kubectl", "create", "namespace", c.Config.Namespace, "--dry-run=client", "-o", "yaml")
+	createNsCmd := c.Cmd.Command("kubectl", "create", "namespace", c.Config.Namespace, "--dry-run=client", "-o", "yaml")
 	createNsCmd.Stdout = &nsBuffer
 
-	if err := createNsCmd.Run(); err != nil {
+	if err := c.Cmd.Run(createNsCmd); err != nil {
 		return utils.NewError("failed to create namespace yaml: %v", err)
 	}
 
-	applyNsCmd := exec.Command("kubectl", "apply", "-f", "-")
+	applyNsCmd := c.Cmd.Command("kubectl", "apply", "-f", "-")
 	applyNsCmd.Stdin = bytes.NewReader(nsBuffer.Bytes())
 
-	if err := applyNsCmd.Run(); err != nil {
+	if err := c.Cmd.Run(applyNsCmd); err != nil {
 		return utils.NewError("failed to apply namespace: %v", err)
 	}
 
 	// Create secret
 	utils.Log.Infof("Creating CA secret in namespace: %s\n", c.Config.Namespace)
 	var secretBuffer bytes.Buffer
-	secretCmd := exec.Command("kubectl", "create", "secret", "generic",
+	secretCmd := c.Cmd.Command("kubectl", "create", "secret", "generic",
 		"custom-root-ca",
 		"--from-file=ca.crt="+tmpFile.Name(),
 		"-n", c.Config.Namespace,
@@ -193,14 +202,14 @@ func (c *Common) SetupRootCA() error {
 		"-o", "yaml")
 	secretCmd.Stdout = &secretBuffer
 
-	if err := secretCmd.Run(); err != nil {
+	if err := c.Cmd.Run(secretCmd); err != nil {
 		return utils.NewError("failed to create secret yaml: %v", err)
 	}
 
-	applySecretCmd := exec.Command("kubectl", "apply", "-f", "-")
+	applySecretCmd := c.Cmd.Command("kubectl", "apply", "-f", "-")
 	applySecretCmd.Stdin = bytes.NewReader(secretBuffer.Bytes())
 
-	if err := applySecretCmd.Run(); err != nil {
+	if err := c.Cmd.Run(applySecretCmd); err != nil {
 		return utils.NewError("failed to apply secret: %v", err)
 	}
 
@@ -236,15 +245,15 @@ func (c *Common) ExtractYAMLContent(helmOutput []byte) ([]byte, error) {
 // GetDiff gets the diff between current and proposed state
 func (c *Common) GetDiff(args []string, isHelm bool) error {
 	if isHelm {
-		currentCmd := exec.Command("helm", "get", "manifest", c.Config.ReleaseName, "-n", c.Config.Namespace)
-		current, err := currentCmd.Output()
+		currentCmd := c.Cmd.Command("helm", "get", "manifest", c.Config.ReleaseName, "-n", c.Config.Namespace)
+		current, err := c.Cmd.Output(currentCmd)
 		if err != nil {
 			utils.Log.Info("No existing release found. Showing what would be installed:")
 			dryRunArgs := append(args, "--dry-run")
-			cmd := exec.Command("helm", dryRunArgs...)
+			cmd := c.Cmd.Command("helm", dryRunArgs...)
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			if err := cmd.Run(); err != nil {
+			if err := c.Cmd.Run(cmd); err != nil {
 				// Add more detailed error information
 				utils.Log.Errorf("Dry-run failed: %v", err)
 				if exitErr, ok := err.(*exec.ExitError); ok {
@@ -256,8 +265,8 @@ func (c *Common) GetDiff(args []string, isHelm bool) error {
 		}
 
 		dryRunArgs := append(args, "--dry-run")
-		proposedCmd := exec.Command("helm", dryRunArgs...)
-		proposed, err := proposedCmd.Output()
+		proposedCmd := c.Cmd.Command("helm", dryRunArgs...)
+		proposed, err := c.Cmd.Output(proposedCmd)
 		if err != nil {
 			// Add more detailed error information
 			utils.Log.Errorf("Failed to get proposed state: %v", err)
@@ -275,8 +284,8 @@ func (c *Common) GetDiff(args []string, isHelm bool) error {
 		return utils.ShowResourceDiff(current, proposedYAML, c.Config.DEBUG)
 	} else {
 		for _, manifest := range args {
-			cmd := exec.Command("kubectl", "diff", "-f", manifest, "-n", c.Config.Namespace)
-			output, err := cmd.CombinedOutput()
+			cmd := c.Cmd.Command("kubectl", "diff", "-f", manifest, "-n", c.Config.Namespace)
+			output, err := c.Cmd.CombinedOutput(cmd)
 
 			utils.Green("\nDiff for %s:\n", manifest)
 			fmt.Println(utils.ColorizeKubectlDiff(string(output)))

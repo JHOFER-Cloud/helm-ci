@@ -20,12 +20,15 @@ func main() {
 	// Initialize logger
 	utils.InitLogger(cfg.DEBUG)
 
+	// Create a common instance with the config
+	common := deployment.NewCommon(cfg)
+
 	// Create deployer based on config
 	var deployer deployment.Deployer
 	if cfg.Custom {
-		deployer = &deployment.CustomDeployer{Common: deployment.Common{Config: cfg}}
+		deployer = &deployment.CustomDeployer{Common: common}
 	} else {
-		deployer = &deployment.HelmDeployer{Common: deployment.Common{Config: cfg}}
+		deployer = &deployment.HelmDeployer{Common: common}
 	}
 
 	// Run deployment

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"helm-ci/deploy/utils"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -58,11 +57,13 @@ func (d *HelmDeployer) Deploy() error {
 	} else {
 		args = append(args, fmt.Sprintf("%s/%s", d.Common.Config.AppName, d.Common.Config.Chart))
 		// Add helm repo for all apps
-		if err := exec.Command("helm", "repo", "add", d.Common.Config.AppName, d.Common.Config.Repository).Run(); err != nil {
+		repoAddCmd := d.Cmd.Command("helm", "repo", "add", d.Common.Config.AppName, d.Common.Config.Repository)
+		if err := d.Cmd.Run(repoAddCmd); err != nil {
 			return utils.NewError("failed to add Helm repository: %v", err)
 		}
 
-		if err := exec.Command("helm", "repo", "update").Run(); err != nil {
+		repoUpdateCmd := d.Cmd.Command("helm", "repo", "update")
+		if err := d.Cmd.Run(repoUpdateCmd); err != nil {
 			return utils.NewError("failed to update Helm repository: %v", err)
 		}
 	}
@@ -122,9 +123,9 @@ func (d *HelmDeployer) Deploy() error {
 	}
 
 	// Proceed with actual deployment
-	cmd := exec.Command("helm", args...)
+	cmd := d.Cmd.Command("helm", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	return cmd.Run()
+	return d.Cmd.Run(cmd)
 }
