@@ -1,3 +1,11 @@
+# [2.1.0-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.4...v2.1.0-dev.1) (2025-03-01)
+
+
+### Features
+
+* add mock test ([2179ddd](https://github.com/JHOFER-Cloud/helm-ci/commit/2179ddde67e57c56b87e7d6d90b27608ebbddc6b))
+* add tests ([d5fa427](https://github.com/JHOFER-Cloud/helm-ci/commit/d5fa4277985ce3e02ecc068637d16da2d7dec24d))
+
 ## [2.0.4](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.3...v2.0.4) (2025-02-15)
 
 
