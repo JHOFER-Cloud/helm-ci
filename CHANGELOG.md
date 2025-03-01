@@ -1,3 +1,11 @@
+## [2.1.0-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.1.0-dev.1...v2.1.0-dev.2) (2025-03-01)
+
+### :repeat: CI
+
+* add more commit types to semantic release ([4f47d2c](https://github.com/JHOFER-Cloud/helm-ci/commit/4f47d2c2f88e66e32940626077902381f5a5877b))
+* fix semantic release ([c83890a](https://github.com/JHOFER-Cloud/helm-ci/commit/c83890a65a3dbf7db5c24d6e937398df02b2ef5f))
+* fix typo in semantic release dependency ([7855fd2](https://github.com/JHOFER-Cloud/helm-ci/commit/7855fd2559753667e2e25c1c730783d75fa639d8))
+
 # [2.1.0-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.4...v2.1.0-dev.1) (2025-03-01)
 
 
