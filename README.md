@@ -66,7 +66,7 @@ Default version is KV v2
 ## Tests
 
 ```bash
-go test ./deploy/vault/... -v
+./run-tests.sh
 ```
 
 ## EVERYTHING BELOW MAY BE OUTDATED
