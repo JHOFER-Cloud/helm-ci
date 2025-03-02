@@ -1,3 +1,25 @@
+## [3.0.0-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.1.0-dev.2...v3.0.0-dev.1) (2025-03-02)
+
+### ⚠ BREAKING CHANGES
+
+* YOU NEED TO MIGRATE TO LIVE/DEV_DOMAINS AND SELECT THE
+CORRECT TEMPLATE FOR YOUR CHART (or leave default)
+
+### :sparkles: Features
+
+* allow using multiple domains by using templates ([90a7034](https://github.com/JHOFER-Cloud/helm-ci/commit/90a703466a8c463a365a27ab31cfca6c6c7b86d5))
+
+### :memo: Documentation
+
+* remove outdated stuff ([6419745](https://github.com/JHOFER-Cloud/helm-ci/commit/64197457d69d58bde1041cecb23b5bc1d9b21ef4))
+* update tests section ([887f92d](https://github.com/JHOFER-Cloud/helm-ci/commit/887f92d643938207ef6c80d3729816a3da7dedda))
+
+### :repeat: Chore
+
+* cleanup some code analysis warnings/recommendations ([84bbaf7](https://github.com/JHOFER-Cloud/helm-ci/commit/84bbaf795648127f66ebc2dc55d304365b8930d1))
+* improve DEBUG mode ([e1b3b8d](https://github.com/JHOFER-Cloud/helm-ci/commit/e1b3b8ddd65514215e4cfcc0b241c73c89712003))
+* update tests ([67a4523](https://github.com/JHOFER-Cloud/helm-ci/commit/67a4523066113bead45d0e7d0f7dce86dce64134))
+
 ## [2.1.0-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.1.0-dev.1...v2.1.0-dev.2) (2025-03-01)
 
 ### :repeat: CI
