@@ -2,6 +2,7 @@ package deployment
 
 import (
 	"fmt"
+	"helm-ci/deploy/templates"
 	"helm-ci/deploy/utils"
 	"os"
 	"path/filepath"
@@ -18,10 +19,25 @@ func (d *HelmDeployer) GetTraefikDashboardArgs() []string {
 	var args []string
 
 	if d.Config.TraefikDashboard {
-		args = append(args,
-			"--set", fmt.Sprintf("ingressRoute.dashboard.matchRule=Host(`%s`)", d.Config.IngressHost),
-			"--set", "ingressRoute.dashboard.entryPoints[0]=websecure",
-		)
+		if len(d.Config.IngressHosts) > 0 {
+			// Create a Host expression with all domains
+			hostRules := make([]string, len(d.Config.IngressHosts))
+			for i, host := range d.Config.IngressHosts {
+				hostRules[i] = fmt.Sprintf("Host(`%s`)", host)
+			}
+			hostExpression := strings.Join(hostRules, " || ")
+
+			args = append(args,
+				"--set", fmt.Sprintf("ingressRoute.dashboard.matchRule=%s", hostExpression),
+				"--set", "ingressRoute.dashboard.entryPoints[0]=websecure",
+			)
+		} else {
+			// If no domains are specified, don't set a host rule
+			utils.Log.Warning("Traefik dashboard enabled but no domains specified")
+			args = append(args,
+				"--set", "ingressRoute.dashboard.entryPoints[0]=websecure",
+			)
+		}
 	}
 
 	return args
@@ -70,11 +86,15 @@ func (d *HelmDeployer) Deploy() error {
 
 	args = append(args, "--namespace", d.Config.Namespace, "--create-namespace")
 
-	if d.Config.Domain != "" {
-		if strings.Contains(d.Config.AppName, "vault") {
-			args = append(args, "--set", fmt.Sprintf("server.ingress.hosts[0].host=%s", d.Config.IngressHost))
-		} else {
-			args = append(args, "--set", fmt.Sprintf("ingress.host=%s", d.Config.IngressHost))
+	// Process domain template if domains are specified
+	if len(d.Config.Domains) > 0 {
+		domainValuesFile, err := templates.ProcessDomainTemplate(d.Config)
+		if err != nil {
+			return err
+		}
+		if domainValuesFile != "" {
+			defer os.Remove(domainValuesFile)
+			args = append(args, "--values", domainValuesFile)
 		}
 	}
 
