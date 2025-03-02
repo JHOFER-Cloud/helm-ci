@@ -125,15 +125,21 @@ func (c *Config) SetupNames() {
 		c.Namespace = c.AppName + "-dev"
 	}
 
+	// Set the release name based on stage and PR number
+	// This needs to happen regardless of domains
+	if c.Stage == "dev" && c.PRNumber != "" && c.PRDeployments {
+		c.ReleaseName = fmt.Sprintf("%s-pr-%s", c.AppName, c.PRNumber)
+	} else {
+		c.ReleaseName = c.AppName
+	}
+
 	// Set up ingress hosts from domains
 	c.IngressHosts = []string{}
 
 	for _, domain := range c.Domains {
 		if c.Stage == "dev" && c.PRNumber != "" && c.PRDeployments {
-			c.ReleaseName = fmt.Sprintf("%s-pr-%s", c.AppName, c.PRNumber)
 			c.IngressHosts = append(c.IngressHosts, fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, domain))
 		} else {
-			c.ReleaseName = c.AppName
 			c.IngressHosts = append(c.IngressHosts, fmt.Sprintf("%s.%s", c.AppName, domain))
 		}
 	}

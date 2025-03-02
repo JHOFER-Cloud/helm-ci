@@ -234,7 +234,7 @@ func TestHelmDeployer_Deploy_RepoAddError(t *testing.T) {
 		ReleaseName: "test-release",
 		Namespace:   "test-namespace",
 		Repository:  "https://charts.example.com", // non-OCI repo
-		Domain:      "example.com",
+		Domains:     []string{"example.com"},
 	}
 
 	// Create a mock commander
@@ -273,7 +273,7 @@ func TestHelmDeployer_Deploy_RepoUpdateError(t *testing.T) {
 		ReleaseName: "test-release",
 		Namespace:   "test-namespace",
 		Repository:  "https://charts.example.com", // non-OCI repo
-		Domain:      "example.com",
+		Domains:     []string{"example.com"},
 	}
 
 	// Create a mock commander
@@ -314,7 +314,7 @@ func TestHelmDeployer_Deploy_OciRepository(t *testing.T) {
 		ReleaseName: "test-release",
 		Namespace:   "test-namespace",
 		Repository:  "oci://registry.example.com", // OCI repo
-		Domain:      "example.com",
+		Domains:     []string{"example.com"},
 	}
 
 	// Create a mock commander
