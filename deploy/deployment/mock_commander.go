@@ -45,7 +45,7 @@ func (m *MockCommander) Command(name string, args ...string) *exec.Cmd {
 }
 
 // getResponseForCommand returns the appropriate response for a command
-func (m *MockCommander) getResponseForCommand(cmd *exec.Cmd) MockResponse {
+func (m *MockCommander) getResponseForCommand() MockResponse {
 	// Get the last recorded command
 	if len(m.Commands) == 0 {
 		return m.DefaultResponse
@@ -88,19 +88,19 @@ func (m *MockCommander) getResponseForCommand(cmd *exec.Cmd) MockResponse {
 
 // CombinedOutput returns the mock output for the command
 func (m *MockCommander) CombinedOutput(cmd *exec.Cmd) ([]byte, error) {
-	response := m.getResponseForCommand(cmd)
+	response := m.getResponseForCommand()
 	return response.Output, response.Error
 }
 
 // Run returns the mock error for the command
 func (m *MockCommander) Run(cmd *exec.Cmd) error {
-	response := m.getResponseForCommand(cmd)
+	response := m.getResponseForCommand()
 	return response.Error
 }
 
 // Output returns the mock output for the command
 func (m *MockCommander) Output(cmd *exec.Cmd) ([]byte, error) {
-	response := m.getResponseForCommand(cmd)
+	response := m.getResponseForCommand()
 	return response.Output, response.Error
 }
 

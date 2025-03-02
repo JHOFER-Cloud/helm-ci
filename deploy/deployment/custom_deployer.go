@@ -13,7 +13,7 @@ type CustomDeployer struct {
 
 // Deploy implements the custom deployment
 func (d *CustomDeployer) Deploy() error {
-	manifests, err := filepath.Glob(filepath.Join(d.Common.Config.ValuesPath, "*.yml"))
+	manifests, err := filepath.Glob(filepath.Join(d.Config.ValuesPath, "*.yml"))
 	if err != nil {
 		return utils.NewError("failed to find manifests: %v", err)
 	}
@@ -32,14 +32,14 @@ func (d *CustomDeployer) Deploy() error {
 	}
 
 	// Check if namespace exists, create if it doesn't
-	cmd := d.Cmd.Command("kubectl", "get", "namespace", d.Common.Config.Namespace)
+	cmd := d.Cmd.Command("kubectl", "get", "namespace", d.Config.Namespace)
 	if err := d.Cmd.Run(cmd); err != nil {
-		utils.Green("Namespace %s does not exist, creating it...", d.Common.Config.Namespace)
-		cmd = d.Cmd.Command("kubectl", "create", "namespace", d.Common.Config.Namespace)
+		utils.Green("Namespace %s does not exist, creating it...", d.Config.Namespace)
+		cmd = d.Cmd.Command("kubectl", "create", "namespace", d.Config.Namespace)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := d.Cmd.Run(cmd); err != nil {
-			return utils.NewError("failed to create namespace %s: %v", d.Common.Config.Namespace, err)
+			return utils.NewError("failed to create namespace %s: %v", d.Config.Namespace, err)
 		}
 	}
 
@@ -51,7 +51,7 @@ func (d *CustomDeployer) Deploy() error {
 
 	// Proceed with actual deployment
 	for _, manifest := range processedManifests {
-		cmd := d.Cmd.Command("kubectl", "apply", "-f", manifest, "-n", d.Common.Config.Namespace)
+		cmd := d.Cmd.Command("kubectl", "apply", "-f", manifest, "-n", d.Config.Namespace)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 

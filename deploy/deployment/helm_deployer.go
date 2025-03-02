@@ -17,9 +17,9 @@ type HelmDeployer struct {
 func (d *HelmDeployer) GetTraefikDashboardArgs() []string {
 	var args []string
 
-	if d.Common.Config.TraefikDashboard {
+	if d.Config.TraefikDashboard {
 		args = append(args,
-			"--set", fmt.Sprintf("ingressRoute.dashboard.matchRule=Host(`%s`)", d.Common.Config.IngressHost),
+			"--set", fmt.Sprintf("ingressRoute.dashboard.matchRule=Host(`%s`)", d.Config.IngressHost),
 			"--set", "ingressRoute.dashboard.entryPoints[0]=websecure",
 		)
 	}
@@ -49,15 +49,15 @@ func (d *HelmDeployer) Deploy() error {
 	}
 
 	var args []string
-	args = append(args, "upgrade", "--install", d.Common.Config.ReleaseName)
+	args = append(args, "upgrade", "--install", d.Config.ReleaseName)
 
 	// Check if the repository is an OCI registry
-	if strings.HasPrefix(d.Common.Config.Repository, "oci://") {
-		args = append(args, fmt.Sprintf("%s/%s", d.Common.Config.Repository, d.Common.Config.Chart))
+	if strings.HasPrefix(d.Config.Repository, "oci://") {
+		args = append(args, fmt.Sprintf("%s/%s", d.Config.Repository, d.Config.Chart))
 	} else {
-		args = append(args, fmt.Sprintf("%s/%s", d.Common.Config.AppName, d.Common.Config.Chart))
+		args = append(args, fmt.Sprintf("%s/%s", d.Config.AppName, d.Config.Chart))
 		// Add helm repo for all apps
-		repoAddCmd := d.Cmd.Command("helm", "repo", "add", d.Common.Config.AppName, d.Common.Config.Repository)
+		repoAddCmd := d.Cmd.Command("helm", "repo", "add", d.Config.AppName, d.Config.Repository)
 		if err := d.Cmd.Run(repoAddCmd); err != nil {
 			return utils.NewError("failed to add Helm repository: %v", err)
 		}
@@ -68,18 +68,18 @@ func (d *HelmDeployer) Deploy() error {
 		}
 	}
 
-	args = append(args, "--namespace", d.Common.Config.Namespace, "--create-namespace")
+	args = append(args, "--namespace", d.Config.Namespace, "--create-namespace")
 
-	if d.Common.Config.Domain != "" {
-		if strings.Contains(d.Common.Config.AppName, "vault") {
-			args = append(args, "--set", fmt.Sprintf("server.ingress.hosts[0].host=%s", d.Common.Config.IngressHost))
+	if d.Config.Domain != "" {
+		if strings.Contains(d.Config.AppName, "vault") {
+			args = append(args, "--set", fmt.Sprintf("server.ingress.hosts[0].host=%s", d.Config.IngressHost))
 		} else {
-			args = append(args, "--set", fmt.Sprintf("ingress.host=%s", d.Common.Config.IngressHost))
+			args = append(args, "--set", fmt.Sprintf("ingress.host=%s", d.Config.IngressHost))
 		}
 	}
 
 	// Process and add values files with Vault templating
-	commonValuesFile := filepath.Join(d.Common.Config.ValuesPath, "common.yml")
+	commonValuesFile := filepath.Join(d.Config.ValuesPath, "common.yml")
 	if _, err := os.Stat(commonValuesFile); err == nil {
 		processedFile, err := d.ProcessValuesFileWithVault(commonValuesFile)
 		if err != nil {
@@ -91,7 +91,7 @@ func (d *HelmDeployer) Deploy() error {
 		args = append(args, "--values", processedFile)
 	}
 
-	stageValuesFile := filepath.Join(d.Common.Config.ValuesPath, fmt.Sprintf("%s.yml", d.Common.Config.Stage))
+	stageValuesFile := filepath.Join(d.Config.ValuesPath, fmt.Sprintf("%s.yml", d.Config.Stage))
 	if _, err := os.Stat(stageValuesFile); err == nil {
 		processedFile, err := d.ProcessValuesFileWithVault(stageValuesFile)
 		if err != nil {
@@ -104,12 +104,12 @@ func (d *HelmDeployer) Deploy() error {
 	}
 
 	// Add version if specified
-	if d.Common.Config.Version != "" {
-		args = append(args, "--version", d.Common.Config.Version)
+	if d.Config.Version != "" {
+		args = append(args, "--version", d.Config.Version)
 	}
 
 	// Add Traefik dashboard args if applicable
-	if strings.Contains(d.Common.Config.AppName, "traefik") {
+	if strings.Contains(d.Config.AppName, "traefik") {
 		args = append(args, d.GetTraefikDashboardArgs()...)
 	}
 

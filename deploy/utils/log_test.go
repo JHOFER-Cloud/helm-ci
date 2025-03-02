@@ -32,7 +32,7 @@ func TestSuccess(t *testing.T) {
 
 	// Test Success function
 	testMessage := "Operation successful"
-	Success(testMessage)
+	Success("%s", testMessage)
 
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, testMessage) {
@@ -49,7 +49,7 @@ func TestGreen(t *testing.T) {
 
 	// Test Green function
 	testMessage := "Green message"
-	Green(testMessage)
+	Green("%s", testMessage)
 
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, testMessage) {
