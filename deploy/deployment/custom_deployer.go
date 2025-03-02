@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+// FIX: metadata.namespace in manifest file has to be set/replaced
 package deployment
 
 import (
@@ -27,10 +27,16 @@ type CustomDeployer struct {
 
 // Deploy implements the custom deployment
 func (d *CustomDeployer) Deploy() error {
-	manifests, err := filepath.Glob(filepath.Join(d.Config.ValuesPath, "*.y*ml"))
+	stageManifests, err := filepath.Glob(filepath.Join(d.Config.ValuesPath, d.Config.Stage, "*.y*ml"))
 	if err != nil {
-		return utils.NewError("failed to find manifests: %v", err)
+		return utils.NewError("failed to glob stage manifests: %w", err)
 	}
+
+	commonManifests, err := filepath.Glob(filepath.Join(d.Config.ValuesPath, "common", "*.y*ml"))
+	if err != nil {
+		return utils.NewError("failed to glob common manifests: %w", err)
+	}
+	manifests := append(stageManifests, commonManifests...)
 
 	// Process manifests with Vault templating
 	processedManifests := make([]string, 0, len(manifests))

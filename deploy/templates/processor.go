@@ -30,26 +30,42 @@ func ProcessDomainTemplate(cfg *config.Config) (string, error) {
 		return "", nil
 	}
 
-	// Determine template path
+	// Determine template content
+	var templateContent string
 	templatePath := cfg.DomainsTemplate
-	if !strings.Contains(templatePath, "/") {
-		// Check if it's a built-in template
-		builtinPath := filepath.Join("deploy", "templates", "domains", templatePath+".y*ml")
-		if _, err := os.Stat(builtinPath); err == nil {
-			templatePath = builtinPath
-		} else {
-			return "", utils.NewError("built-in template '%s' not found", cfg.DomainsTemplate)
-		}
-	}
 
-	// Read template
-	content, err := os.ReadFile(templatePath)
-	if err != nil {
-		return "", utils.NewError("failed to read domain template: %v", err)
+	if !strings.Contains(templatePath, "/") {
+		// It's not a path, try to get it from embedded templates
+		content, found := GetEmbeddedTemplate(templatePath)
+		if found {
+			utils.Log.Debugf("Using embedded template: %s", templatePath)
+			templateContent = content
+		} else {
+			// If not found in embedded templates, try as a path to a file
+			builtinPath := filepath.Join("deploy", "templates", "domains", templatePath+".yml")
+			utils.Log.Debugf("Embedded template '%s' not found, checking file: %s", templatePath, builtinPath)
+
+			if content, err := os.ReadFile(builtinPath); err == nil {
+				templateContent = string(content)
+			} else {
+				// Show available templates in error message
+				available := ListEmbeddedTemplates()
+				return "", utils.NewError("template '%s' not found. Available built-in templates: %v",
+					templatePath, available)
+			}
+		}
+	} else {
+		// It's a path to a custom template file
+		utils.Log.Debugf("Reading custom template file: %s", templatePath)
+		content, err := os.ReadFile(templatePath)
+		if err != nil {
+			return "", utils.NewError("failed to read domain template file: %v", err)
+		}
+		templateContent = string(content)
 	}
 
 	// Process template
-	tmpl, err := template.New("domains").Parse(string(content))
+	tmpl, err := template.New("domains").Parse(templateContent)
 	if err != nil {
 		return "", utils.NewError("failed to parse domain template: %v", err)
 	}
@@ -85,5 +101,6 @@ func ProcessDomainTemplate(cfg *config.Config) (string, error) {
 		return "", utils.NewError("failed to close temporary file: %v", err)
 	}
 
+	utils.Log.Infof("Using template: %s", templatePath)
 	return tmpFile.Name(), nil
 }
