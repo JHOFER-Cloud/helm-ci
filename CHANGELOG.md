@@ -1,3 +1,56 @@
+## [3.0.0](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.0.4...v3.0.0) (2025-03-02)
+
+### ⚠ BREAKING CHANGES
+
+* {values_path}/{stage}/manifest.yml instead of
+{values_path}/manifest.yml
+* YOU NEED TO MIGRATE TO LIVE/DEV_DOMAINS AND SELECT THE
+CORRECT TEMPLATE FOR YOUR CHART (or leave default)
+
+### :sparkles: Features
+
+* add mock test ([2179ddd](https://github.com/JHOFER-Cloud/helm-ci/commit/2179ddde67e57c56b87e7d6d90b27608ebbddc6b))
+* add tests ([d5fa427](https://github.com/JHOFER-Cloud/helm-ci/commit/d5fa4277985ce3e02ecc068637d16da2d7dec24d))
+* allow using multiple domains by using templates ([90a7034](https://github.com/JHOFER-Cloud/helm-ci/commit/90a703466a8c463a365a27ab31cfca6c6c7b86d5))
+* allow yaml and yml ([44fcad4](https://github.com/JHOFER-Cloud/helm-ci/commit/44fcad428c7b31fbf8de72a45b58a8a272529593))
+* manifest uses now staged folder layout ([1ee9caa](https://github.com/JHOFER-Cloud/helm-ci/commit/1ee9caaff5457fb3f97413eb765fc382ab947b1a))
+
+### :bug: Fixes
+
+* embedded templates ([9d35c2a](https://github.com/JHOFER-Cloud/helm-ci/commit/9d35c2a51142222937cced6d8800eed68c908b31))
+* embedded templates ([961ec01](https://github.com/JHOFER-Cloud/helm-ci/commit/961ec0173194a466152aff3c4232fe4cab14796d))
+* replace/set metadata.namespace for custom deployments ([4adfa0a](https://github.com/JHOFER-Cloud/helm-ci/commit/4adfa0aad193d41d81f95dd94c6d959e69ec0a19))
+
+### :memo: Documentation
+
+* remove outdated stuff ([6419745](https://github.com/JHOFER-Cloud/helm-ci/commit/64197457d69d58bde1041cecb23b5bc1d9b21ef4))
+* update readme ([9d80211](https://github.com/JHOFER-Cloud/helm-ci/commit/9d802119b79841657a0b88f9093d10b68f401446))
+* update readme ([71ac0e5](https://github.com/JHOFER-Cloud/helm-ci/commit/71ac0e519578b6cc51f0b203878dd6f2282ca31f))
+* update readme ([992efb2](https://github.com/JHOFER-Cloud/helm-ci/commit/992efb2af8ead032975b5bf1ebd168e006d973f6))
+* update tests section ([887f92d](https://github.com/JHOFER-Cloud/helm-ci/commit/887f92d643938207ef6c80d3729816a3da7dedda))
+
+### :zap: Refactor
+
+* split script for easier maintanability and readability ([ec4ca6b](https://github.com/JHOFER-Cloud/helm-ci/commit/ec4ca6bb960129cf5cbd4a39508c73a5ccd06cd3))
+
+### :repeat: CI
+
+* add more commit types to semantic release ([4f47d2c](https://github.com/JHOFER-Cloud/helm-ci/commit/4f47d2c2f88e66e32940626077902381f5a5877b))
+* fix semantic release ([c83890a](https://github.com/JHOFER-Cloud/helm-ci/commit/c83890a65a3dbf7db5c24d6e937398df02b2ef5f))
+* fix typo in semantic release dependency ([7855fd2](https://github.com/JHOFER-Cloud/helm-ci/commit/7855fd2559753667e2e25c1c730783d75fa639d8))
+
+### :repeat: Chore
+
+* cleanup some code analysis warnings/recommendations ([84bbaf7](https://github.com/JHOFER-Cloud/helm-ci/commit/84bbaf795648127f66ebc2dc55d304365b8930d1))
+* improve DEBUG mode ([e1b3b8d](https://github.com/JHOFER-Cloud/helm-ci/commit/e1b3b8ddd65514215e4cfcc0b241c73c89712003))
+* **release:** 2.1.0-dev.1 [skip ci] ([20aeadb](https://github.com/JHOFER-Cloud/helm-ci/commit/20aeadb54e12177f8c47d508beca5a3964364e81))
+* **release:** 2.1.0-dev.2 [skip ci] ([919f900](https://github.com/JHOFER-Cloud/helm-ci/commit/919f90043ec701bed21c013bf645ea226c948ae6))
+* **release:** 3.0.0-dev.1 [skip ci] ([34f1686](https://github.com/JHOFER-Cloud/helm-ci/commit/34f1686a16e784595a0db794eb6643f1f9895b17))
+* **release:** 3.0.0-dev.2 [skip ci] ([418d7d2](https://github.com/JHOFER-Cloud/helm-ci/commit/418d7d21cd103a69494b9946a5d099c8df918825))
+* **release:** 3.0.0-dev.3 [skip ci] ([4eb1597](https://github.com/JHOFER-Cloud/helm-ci/commit/4eb1597f1bfc01a4008dfe1375458905efa2d10e))
+* **release:** 3.0.0-dev.4 [skip ci] ([472b05d](https://github.com/JHOFER-Cloud/helm-ci/commit/472b05df4b1c90515d139166dc1622b172eb9bf3))
+* update tests ([67a4523](https://github.com/JHOFER-Cloud/helm-ci/commit/67a4523066113bead45d0e7d0f7dce86dce64134))
+
 ## [3.0.0-dev.4](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.0-dev.3...v3.0.0-dev.4) (2025-03-02)
 
 ### :bug: Fixes
