@@ -1,0 +1,16 @@
+ingress:
+  enabled: true
+  {{- if gt (len .IngressHosts) 0 }}
+  # Primary hostname (first in the list)
+  hostname: {{ index .IngressHosts 0 }}
+  {{- end }}
+  {{- if gt (len .IngressHosts) 1 }}
+  # Additional hostnames
+  extraHosts:
+  {{- range $i, $host := .IngressHosts }}
+    {{- if ne $i 0 }}  # Skip the first host as it's already set as hostname
+    - name: {{ $host }}
+      path: /
+    {{- end }}
+  {{- end }}
+  {{- end }}

@@ -10,10 +10,6 @@ import (
 	"testing"
 )
 
-// EXISTING TESTS PRESERVED (partial listing for brevity)
-
-// NEW TESTS BELOW
-
 func TestPrintConfig_SensitiveFields(t *testing.T) {
 	// Create a config with sensitive and non-sensitive values
 	cfg := &Config{
@@ -71,29 +67,29 @@ func TestConfig_SetupNames_EdgeCases(t *testing.T) {
 		config          *Config
 		expectedNS      string
 		expectedRelease string
-		expectedHost    string
+		expectedHosts   []string
 	}{
 		{
 			name: "empty app name",
 			config: &Config{
 				AppName: "",
 				Stage:   "dev",
-				Domain:  "example.com",
+				Domains: []string{"example.com"},
 			},
-			expectedNS:      "-dev",         // Edge case: empty app name leads to weird namespace
-			expectedRelease: "",             // Empty app name
-			expectedHost:    ".example.com", // Edge case: empty app name in host
+			expectedNS:      "-dev",                   // Edge case: empty app name leads to weird namespace
+			expectedRelease: "",                       // Empty app name
+			expectedHosts:   []string{".example.com"}, // Edge case: empty app name in host
 		},
 		{
 			name: "special characters in app name",
 			config: &Config{
 				AppName: "test-app_special!",
 				Stage:   "dev",
-				Domain:  "example.com",
+				Domains: []string{"example.com"},
 			},
 			expectedNS:      "test-app_special!-dev",
 			expectedRelease: "test-app_special!",
-			expectedHost:    "test-app_special!.example.com",
+			expectedHosts:   []string{"test-app_special!.example.com"},
 		},
 		{
 			name: "PR number with special characters",
@@ -101,36 +97,51 @@ func TestConfig_SetupNames_EdgeCases(t *testing.T) {
 				AppName:       "test-app",
 				Stage:         "dev",
 				PRNumber:      "42-bugfix",
-				Domain:        "dev.example.com",
+				Domains:       []string{"dev.example.com"},
 				PRDeployments: true,
 			},
 			expectedNS:      "test-app-dev",
 			expectedRelease: "test-app-pr-42-bugfix",
-			expectedHost:    "test-app-pr-42-bugfix.dev.example.com",
+			expectedHosts:   []string{"test-app-pr-42-bugfix.dev.example.com"},
 		},
 		{
-			name: "empty domain",
+			name: "empty domains",
 			config: &Config{
 				AppName:  "test-app",
 				Stage:    "dev",
 				PRNumber: "42",
-				Domain:   "", // Empty domain
+				Domains:  []string{}, // Empty domains
 			},
 			expectedNS:      "test-app-dev",
-			expectedRelease: "test-app", // Default since PRDeployments is false
-			expectedHost:    "",         // Empty with no domain
+			expectedRelease: "test-app", // Default since no PR deployments with no domains
+			expectedHosts:   []string{}, // Empty with no domains
 		},
 		{
 			name: "empty stage",
 			config: &Config{
 				AppName:  "test-app",
 				Stage:    "", // Empty stage
-				Domain:   "example.com",
+				Domains:  []string{"example.com"},
 				PRNumber: "42",
 			},
 			expectedNS:      "test-app-dev", // Default behavior without stage
 			expectedRelease: "test-app",     // Default release name
-			expectedHost:    "test-app.example.com",
+			expectedHosts:   []string{"test-app.example.com"},
+		},
+		{
+			name: "multiple domains",
+			config: &Config{
+				AppName: "test-app",
+				Stage:   "dev",
+				Domains: []string{"example.com", "example.org", "example.net"},
+			},
+			expectedNS:      "test-app-dev",
+			expectedRelease: "test-app",
+			expectedHosts: []string{
+				"test-app.example.com",
+				"test-app.example.org",
+				"test-app.example.net",
+			},
 		},
 	}
 
@@ -144,8 +155,10 @@ func TestConfig_SetupNames_EdgeCases(t *testing.T) {
 			if tc.config.ReleaseName != tc.expectedRelease {
 				t.Errorf("Expected ReleaseName %q, got %q", tc.expectedRelease, tc.config.ReleaseName)
 			}
-			if tc.config.IngressHost != tc.expectedHost {
-				t.Errorf("Expected IngressHost %q, got %q", tc.expectedHost, tc.config.IngressHost)
+
+			// Compare IngressHosts arrays
+			if !reflect.DeepEqual(tc.config.IngressHosts, tc.expectedHosts) {
+				t.Errorf("Expected IngressHosts %v, got %v", tc.expectedHosts, tc.config.IngressHosts)
 			}
 		})
 	}
@@ -195,7 +208,7 @@ func TestParseFlags_DefaultValues(t *testing.T) {
 		{"Chart", ""},
 		{"Version", ""},
 		{"Repository", ""},
-		{"Domain", ""},
+		{"Domains", []string(nil)},
 		{"CustomNameSpace", ""},
 		{"Custom", false},
 		{"TraefikDashboard", false},
@@ -204,6 +217,7 @@ func TestParseFlags_DefaultValues(t *testing.T) {
 		{"VaultBasePath", ""},
 		{"VaultInsecureTLS", false},
 		{"DEBUG", false},
+		{"DomainsTemplate", "default"}, // Added default domain template
 	}
 
 	for _, check := range defaultChecks {
@@ -228,7 +242,7 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 		config          *Config
 		expectedNS      string
 		expectedRelease string
-		expectedHost    string
+		expectedHosts   []string
 	}{
 		{
 			name: "custom namespace with PR number",
@@ -236,13 +250,13 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 				AppName:         "test-app",
 				Stage:           "dev",
 				PRNumber:        "42",
-				Domain:          "dev.example.com",
+				Domains:         []string{"dev.example.com"},
 				PRDeployments:   true,
 				CustomNameSpace: "custom-ns",
 			},
 			expectedNS:      "custom-ns", // Custom namespace takes precedence
 			expectedRelease: "test-app-pr-42",
-			expectedHost:    "test-app-pr-42.dev.example.com",
+			expectedHosts:   []string{"test-app-pr-42.dev.example.com"},
 		},
 		{
 			name: "live stage with custom namespace and PR",
@@ -250,13 +264,13 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 				AppName:         "test-app",
 				Stage:           "live", // Live environment
 				PRNumber:        "42",   // With PR number
-				Domain:          "example.com",
+				Domains:         []string{"example.com"},
 				PRDeployments:   true,
 				CustomNameSpace: "custom-live", // And custom namespace
 			},
-			expectedNS:      "custom-live",          // Custom namespace takes precedence over live
-			expectedRelease: "test-app",             // Live stage doesn't use PR in release name
-			expectedHost:    "test-app.example.com", // Live stage doesn't use PR in host
+			expectedNS:      "custom-live",                    // Custom namespace takes precedence over live
+			expectedRelease: "test-app",                       // Live stage doesn't use PR in release name
+			expectedHosts:   []string{"test-app.example.com"}, // Live stage doesn't use PR in host
 		},
 		{
 			name: "live stage with PR deployments enabled",
@@ -264,12 +278,28 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 				AppName:       "test-app",
 				Stage:         "live",
 				PRNumber:      "42",
-				Domain:        "example.com",
+				Domains:       []string{"example.com"},
 				PRDeployments: true, // Enabled but should be ignored for live
 			},
-			expectedNS:      "test-app",             // Live namespace
-			expectedRelease: "test-app",             // Live release (PR ignored in live)
-			expectedHost:    "test-app.example.com", // Live host (PR ignored)
+			expectedNS:      "test-app",                       // Live namespace
+			expectedRelease: "test-app",                       // Live release (PR ignored in live)
+			expectedHosts:   []string{"test-app.example.com"}, // Live host (PR ignored)
+		},
+		{
+			name: "multiple domains with PR",
+			config: &Config{
+				AppName:       "test-app",
+				Stage:         "dev",
+				PRNumber:      "42",
+				Domains:       []string{"dev1.example.com", "dev2.example.com"},
+				PRDeployments: true,
+			},
+			expectedNS:      "test-app-dev",
+			expectedRelease: "test-app-pr-42",
+			expectedHosts: []string{
+				"test-app-pr-42.dev1.example.com",
+				"test-app-pr-42.dev2.example.com",
+			},
 		},
 	}
 
@@ -283,8 +313,10 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 			if tc.config.ReleaseName != tc.expectedRelease {
 				t.Errorf("Expected ReleaseName %q, got %q", tc.expectedRelease, tc.config.ReleaseName)
 			}
-			if tc.config.IngressHost != tc.expectedHost {
-				t.Errorf("Expected IngressHost %q, got %q", tc.expectedHost, tc.config.IngressHost)
+
+			// Compare IngressHosts arrays
+			if !reflect.DeepEqual(tc.config.IngressHosts, tc.expectedHosts) {
+				t.Errorf("Expected IngressHosts %v, got %v", tc.expectedHosts, tc.config.IngressHosts)
 			}
 		})
 	}

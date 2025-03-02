@@ -6,6 +6,7 @@ import (
 	"helm-ci/deploy/utils"
 	"os"
 	"reflect"
+	"strings"
 )
 
 // Config holds all the configuration for the deployment
@@ -15,12 +16,13 @@ type Config struct {
 	Custom           bool
 	CustomNameSpace  string
 	DEBUG            bool
-	Domain           string
+	Domains          []string
+	DomainsTemplate  string
 	Environment      string
 	GitHubOwner      string
 	GitHubRepo       string
 	GitHubToken      string
-	IngressHost      string
+	IngressHosts     []string
 	Namespace        string
 	PRDeployments    bool
 	PRNumber         string
@@ -53,7 +55,8 @@ func ParseFlags() *Config {
 	flag.StringVar(&cfg.GitHubToken, "github-token", os.Getenv("GITHUB_TOKEN"), "GitHub API token")
 	flag.StringVar(&cfg.GitHubRepo, "github-repo", "", "GitHub repository name")
 	flag.StringVar(&cfg.GitHubOwner, "github-owner", "", "GitHub repository owner")
-	flag.StringVar(&cfg.Domain, "domain", "", "Ingress domain")
+	domainsStr := flag.String("domains", "", "Comma-separated list of domains")
+	flag.StringVar(&cfg.DomainsTemplate, "domain-template", "default", "Domain template to use")
 	flag.StringVar(&cfg.CustomNameSpace, "custom-namespace", "", "Custom K8s Namespace")
 	flag.BoolVar(&cfg.Custom, "custom", false, "Custom Kubernetes deployment")
 	flag.BoolVar(&cfg.TraefikDashboard, "traefik-dashboard", false, "Deploy Traefik dashboard")
@@ -81,6 +84,14 @@ func ParseFlags() *Config {
 	if cfg.Environment == "" {
 		utils.NewError("environment is required")
 		os.Exit(1)
+	}
+
+	// Process domains
+	if *domainsStr != "" {
+		cfg.Domains = strings.Split(*domainsStr, ",")
+		for i := range cfg.Domains {
+			cfg.Domains[i] = strings.TrimSpace(cfg.Domains[i])
+		}
 	}
 
 	return cfg
@@ -114,15 +125,22 @@ func (c *Config) SetupNames() {
 		c.Namespace = c.AppName + "-dev"
 	}
 
+	// Set the release name based on stage and PR number
+	// This needs to happen regardless of domains
 	if c.Stage == "dev" && c.PRNumber != "" && c.PRDeployments {
 		c.ReleaseName = fmt.Sprintf("%s-pr-%s", c.AppName, c.PRNumber)
-		if c.Domain != "" {
-			c.IngressHost = fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, c.Domain)
-		}
 	} else {
 		c.ReleaseName = c.AppName
-		if c.Domain != "" {
-			c.IngressHost = fmt.Sprintf("%s.%s", c.AppName, c.Domain)
+	}
+
+	// Set up ingress hosts from domains
+	c.IngressHosts = []string{}
+
+	for _, domain := range c.Domains {
+		if c.Stage == "dev" && c.PRNumber != "" && c.PRDeployments {
+			c.IngressHosts = append(c.IngressHosts, fmt.Sprintf("%s-pr-%s.%s", c.AppName, c.PRNumber, domain))
+		} else {
+			c.IngressHosts = append(c.IngressHosts, fmt.Sprintf("%s.%s", c.AppName, domain))
 		}
 	}
 }

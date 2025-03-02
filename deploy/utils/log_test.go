@@ -32,7 +32,7 @@ func TestSuccess(t *testing.T) {
 
 	// Test Success function
 	testMessage := "Operation successful"
-	Success(testMessage)
+	Success("%s", testMessage)
 
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, testMessage) {
@@ -49,7 +49,7 @@ func TestGreen(t *testing.T) {
 
 	// Test Green function
 	testMessage := "Green message"
-	Green(testMessage)
+	Green("%s", testMessage)
 
 	logOutput := buf.String()
 	if !strings.Contains(logOutput, testMessage) {
@@ -370,5 +370,86 @@ spec:
 
 	if !strings.Contains(output, redColor+"-  removed resource"+resetColor) {
 		t.Errorf("Expected colorized removed resource in output, got: %s", output)
+	}
+}
+
+// Test for ConfirmDeployment with debug=false
+func TestConfirmDeployment_NoDebug(t *testing.T) {
+	// When debug is false, ConfirmDeployment should return true without asking for confirmation
+	result := ConfirmDeployment(false)
+	if !result {
+		t.Error("ConfirmDeployment(false) should return true without asking for confirmation")
+	}
+}
+
+// Test for the debug mode of ShowResourceDiff - simplified version
+func TestShowResourceDiff_DebugMode(t *testing.T) {
+	// Create mock resources
+	currentResource := []byte(`apiVersion: v1
+kind: Service
+metadata:
+  name: example
+spec:
+  ports:
+  - port: 80`)
+
+	proposedResource := []byte(`apiVersion: v1
+kind: Service
+metadata:
+  name: example
+spec:
+  ports:
+  - port: 8080`)
+
+	// Save original log level and restore after test
+	origLevel := Log.GetLevel()
+	defer Log.SetLevel(origLevel)
+
+	// Set log level to debug
+	Log.SetLevel(logrus.DebugLevel)
+
+	// Use buffer to capture log output
+	var logBuf bytes.Buffer
+	origLogOut := Log.Out
+	Log.Out = &logBuf
+	defer func() { Log.Out = origLogOut }()
+
+	// Save original execCommand and restore it after test
+	originalExecCommand := execCommand
+	defer func() { execCommand = originalExecCommand }()
+
+	// Replace execCommand with our mock
+	execCommand = func(command string, args ...string) *exec.Cmd {
+		// For all commands, return a simple mock that does nothing
+		cmd := exec.Command("echo", "mock")
+		return cmd
+	}
+
+	// Create temporary files for current and proposed resources
+	// This is needed because the function will call os.WriteFile
+	tmpDir, err := os.MkdirTemp("", "resource-diff-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Save stdout and redirect to prevent the function's output from appearing
+	oldStdout := os.Stdout
+	os.Stdout, _ = os.Open(os.DevNull)
+	defer func() { os.Stdout = oldStdout }()
+
+	// Call the function with debug=true
+	_ = ShowResourceDiff(currentResource, proposedResource, true)
+
+	// Get the log output
+	logOutput := logBuf.String()
+
+	// Verify debug logs contain expected content
+	if !strings.Contains(logOutput, "Current YAML") {
+		t.Errorf("Debug log should contain 'Current YAML', got: %s", logOutput)
+	}
+
+	if !strings.Contains(logOutput, "Proposed YAML") {
+		t.Errorf("Debug log should contain 'Proposed YAML', got: %s", logOutput)
 	}
 }
