@@ -70,7 +70,7 @@ func ParseFlags() *Config {
 	flag.StringVar(&cfg.GitHubRepo, "github-repo", "", "GitHub repository name")
 	flag.StringVar(&cfg.GitHubOwner, "github-owner", "", "GitHub repository owner")
 	domainsStr := flag.String("domains", "", "Comma-separated list of domains")
-	flag.StringVar(&cfg.DomainTemplate, "domain-template", "", "Domain template to use")
+	flag.StringVar(&cfg.DomainTemplate, "domain-template", "default", "Domain template to use")
 	flag.StringVar(&cfg.CustomNameSpace, "custom-namespace", "", "Custom K8s Namespace")
 	flag.BoolVar(&cfg.Custom, "custom", false, "Custom Kubernetes deployment")
 	flag.BoolVar(&cfg.TraefikDashboard, "traefik-dashboard", false, "Deploy Traefik dashboard")
