@@ -158,7 +158,7 @@ func (m *MockCommander) GetLastCommand() (MockCommand, error) {
 type ExitError struct {
 	Err         error
 	ExitedEarly bool
-	CodeValue   int // Renamed from ExitCode to avoid conflict with method
+	CodeValue   int
 }
 
 func (e *ExitError) Error() string {
