@@ -1,3 +1,10 @@
+## [3.0.0-dev.3](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.0-dev.2...v3.0.0-dev.3) (2025-03-02)
+
+### :bug: Fixes
+
+* embedded templates ([15cd8ba](https://github.com/JHOFER-Cloud/helm-ci/commit/15cd8bac373fdff56cb6c6e89995d0219f855ae4))
+* embedded templates ([961ec01](https://github.com/JHOFER-Cloud/helm-ci/commit/961ec0173194a466152aff3c4232fe4cab14796d))
+
 ## [3.0.0-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.0-dev.1...v3.0.0-dev.2) (2025-03-02)
 
 ### ⚠ BREAKING CHANGES
