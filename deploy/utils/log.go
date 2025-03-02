@@ -1,3 +1,17 @@
+// Copyright 2025 Josef Hofer (JHOFER-Cloud)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package utils
 
 import (
@@ -10,6 +24,9 @@ import (
 )
 
 var Log = logrus.New()
+
+// Make exec.Command mockable for testing
+var execCommand = exec.Command
 
 const (
 	checkMark   = "✓"
@@ -61,24 +78,6 @@ func NewError(format string, args ...interface{}) error {
 	return err
 }
 
-// Usage examples:
-// Log.Info("Processing file...")
-// NewError("Failed to process: %v", err)
-// Log.WithFields(logrus.Fields{
-//     "file": filename,
-//     "size": size,
-// }).Debug("Processing file")
-// Create an error:
-// if kvVersion != KVv1 && kvVersion != KVv2 {
-//     return nil, utils.NewError("invalid KV version: must be 1 or 2")
-// }
-// And for wrapping existing errors:
-// if err != nil {
-//     return utils.WrapError(err, "failed to process request")
-// }
-// utils.Success("Operation completed successfully")
-// utils.Success("Processed %d items", count)
-
 func ColorizeKubectlDiff(diffOutput string) string {
 	lines := strings.Split(diffOutput, "\n")
 	var colorized []string
@@ -127,7 +126,8 @@ func ShowResourceDiff(current, proposed []byte, debug bool) error {
 		fmt.Println(string(proposed))
 	}
 
-	diffCmd := exec.Command("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
+	// Use the mockable execCommand instead of exec.Command directly
+	diffCmd := execCommand("kubectl", "diff", "-f", currentFile.Name(), "-f", proposedFile.Name())
 	output, err := diffCmd.CombinedOutput()
 
 	if len(output) > 0 {
@@ -141,4 +141,16 @@ func ShowResourceDiff(current, proposed []byte, debug bool) error {
 	}
 
 	return nil
+}
+
+// ConfirmDeployment asks for confirmation before proceeding with deployment
+func ConfirmDeployment(debug bool) bool {
+	if !debug {
+		return true // If not in debug mode, proceed automatically
+	}
+
+	Green("Differences shown above. Continue with deployment? (Y/n): ")
+	var response string
+	fmt.Scanln(&response)
+	return response != "n" && response != "N"
 }

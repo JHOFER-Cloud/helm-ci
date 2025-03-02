@@ -43,12 +43,19 @@ on:
         required: false
         type: number
         default: 2
-      dev_domain:
+      dev_domains:
         required: false
         type: string
-      live_domain:
+        description: "Comma-separated list of development domains"
+      live_domains:
         required: false
         type: string
+        description: "Comma-separated list of production domains"
+      domain_template:
+        required: false
+        type: string
+        default: "default"
+        description: "Domain template to use (default, bitnami, vault, or path to custom template)"
       traefik_dashboard:
         required: false
         type: boolean
@@ -86,11 +93,11 @@ jobs:
           if [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "stage=live" >> $GITHUB_OUTPUT
             echo "env=Production" >> $GITHUB_OUTPUT
-            echo "domain=${{ inputs.live_domain }}" >> $GITHUB_OUTPUT
+            echo "domains=${{ inputs.live_domains }}" >> $GITHUB_OUTPUT
           else
             echo "stage=dev" >> $GITHUB_OUTPUT
             echo "env=Development" >> $GITHUB_OUTPUT
-            echo "domain=${{ inputs.dev_domain }}" >> $GITHUB_OUTPUT
+            echo "domains=${{ inputs.dev_domains }}" >> $GITHUB_OUTPUT
           fi
       - name: Checkout
         uses: actions/checkout@v4
@@ -115,24 +122,25 @@ jobs:
           VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
         run: |
           deploy \
-            --stage ${{ steps.vars.outputs.stage }} \
-            --app=${{ inputs.app_name }} \
-            --env=${{ steps.vars.outputs.env }} \
-            --pr=${{ github.event.pull_request.number }} \
-            --values=${{ inputs.values_path }} \
-            --chart=${{ inputs.helm_chart }} \
-            --version=${{ inputs.helm_version }} \
-            --vault-url=${{ inputs.vault_url }} \
-            --vault-base-path=${{ inputs.vault_base_path }} \
-            --vault-insecure-tls=${{ inputs.vault_insecure_tls }} \
-            --vault-kv-version=${{ inputs.vault_kv_version }} \
-            --repo=${{ inputs.helm_repository }} \
-            --domain=${{ steps.vars.outputs.domain }} \
-            --traefik-dashboard=${{ inputs.traefik_dashboard }} \
-            --root-ca=${{ inputs.root_ca }} \
-            --pr-deployments=${{ inputs.pr_deployments }} \
-            --custom-namespace=${{ inputs.custom_namespace }} \
-            --custom=${{ inputs.custom_deployment }}
+            --stage="${{ steps.vars.outputs.stage }}" \
+            --app="${{ inputs.app_name }}" \
+            --env="${{ steps.vars.outputs.env }}" \
+            --pr="${{ github.event.pull_request.number }}" \
+            --values="${{ inputs.values_path }}" \
+            --chart="${{ inputs.helm_chart }}" \
+            --version="${{ inputs.helm_version }}" \
+            --vault-url="${{ inputs.vault_url }}" \
+            --vault-base-path="${{ inputs.vault_base_path }}" \
+            --vault-insecure-tls="${{ inputs.vault_insecure_tls }}" \
+            --vault-kv-version="${{ inputs.vault_kv_version }}" \
+            --repo="${{ inputs.helm_repository }}" \
+            --domains="${{ steps.vars.outputs.domains }}" \
+            --domain-template="${{ inputs.domain_template }}" \
+            --traefik-dashboard="${{ inputs.traefik_dashboard }}" \
+            --root-ca="${{ inputs.root_ca }}" \
+            --pr-deployments="${{ inputs.pr_deployments }}" \
+            --custom-namespace="${{ inputs.custom_namespace }}" \
+            --custom="${{ inputs.custom_deployment }}"
       - name: Check domain accessibility
         id: check_domain
         if: ${{ steps.vars.outputs.domain != '' }}

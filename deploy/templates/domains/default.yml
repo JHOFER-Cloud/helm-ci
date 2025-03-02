@@ -1,0 +1,19 @@
+ingress:
+  enabled: true
+  {{- if eq (len .IngressHosts) 1 }}
+  # For charts that use single host format
+  host: {{ index .IngressHosts 0 }}
+  {{- end }}
+  # For charts that use array format
+  hosts:
+  {{- range $i, $host := .IngressHosts }}
+    - host: {{ $host }}
+      paths:
+        - path: /
+          pathType: Prefix
+  {{- end }}
+  # For charts that use simple array
+  hostsSimple:
+  {{- range $host := .IngressHosts }}
+    - {{ $host }}
+  {{- end }}
