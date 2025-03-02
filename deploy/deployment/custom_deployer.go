@@ -27,7 +27,7 @@ type CustomDeployer struct {
 
 // Deploy implements the custom deployment
 func (d *CustomDeployer) Deploy() error {
-	manifests, err := filepath.Glob(filepath.Join(d.Config.ValuesPath, "*.yml"))
+	manifests, err := filepath.Glob(filepath.Join(d.Config.ValuesPath, "*.y*ml"))
 	if err != nil {
 		return utils.NewError("failed to find manifests: %v", err)
 	}

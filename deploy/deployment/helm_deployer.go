@@ -113,7 +113,7 @@ func (d *HelmDeployer) Deploy() error {
 	}
 
 	// Process and add values files with Vault templating
-	commonValuesFile := filepath.Join(d.Config.ValuesPath, "common.yml")
+	commonValuesFile := filepath.Join(d.Config.ValuesPath, "common.y*ml")
 	if _, err := os.Stat(commonValuesFile); err == nil {
 		processedFile, err := d.ProcessValuesFileWithVault(commonValuesFile)
 		if err != nil {
@@ -125,7 +125,7 @@ func (d *HelmDeployer) Deploy() error {
 		args = append(args, "--values", processedFile)
 	}
 
-	stageValuesFile := filepath.Join(d.Config.ValuesPath, fmt.Sprintf("%s.yml", d.Config.Stage))
+	stageValuesFile := filepath.Join(d.Config.ValuesPath, fmt.Sprintf("%s.y*ml", d.Config.Stage))
 	if _, err := os.Stat(stageValuesFile); err == nil {
 		processedFile, err := d.ProcessValuesFileWithVault(stageValuesFile)
 		if err != nil {

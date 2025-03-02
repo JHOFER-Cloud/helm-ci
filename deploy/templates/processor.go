@@ -34,7 +34,7 @@ func ProcessDomainTemplate(cfg *config.Config) (string, error) {
 	templatePath := cfg.DomainsTemplate
 	if !strings.Contains(templatePath, "/") {
 		// Check if it's a built-in template
-		builtinPath := filepath.Join("deploy", "templates", "domains", templatePath+".yml")
+		builtinPath := filepath.Join("deploy", "templates", "domains", templatePath+".y*ml")
 		if _, err := os.Stat(builtinPath); err == nil {
 			templatePath = builtinPath
 		} else {
