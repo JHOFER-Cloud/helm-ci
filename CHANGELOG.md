@@ -1,3 +1,19 @@
+## [3.0.0-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.0-dev.1...v3.0.0-dev.2) (2025-03-02)
+
+### ⚠ BREAKING CHANGES
+
+* {values_path}/{stage}/manifest.yml instead of
+{values_path}/manifest.yml
+
+### :sparkles: Features
+
+* allow yaml and yml ([44fcad4](https://github.com/JHOFER-Cloud/helm-ci/commit/44fcad428c7b31fbf8de72a45b58a8a272529593))
+* manifest uses now staged folder layout ([1ee9caa](https://github.com/JHOFER-Cloud/helm-ci/commit/1ee9caaff5457fb3f97413eb765fc382ab947b1a))
+
+### :bug: Fixes
+
+* replace/set metadata.namespace for custom deployments ([4adfa0a](https://github.com/JHOFER-Cloud/helm-ci/commit/4adfa0aad193d41d81f95dd94c6d959e69ec0a19))
+
 ## [3.0.0-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v2.1.0-dev.2...v3.0.0-dev.1) (2025-03-02)
 
 ### ⚠ BREAKING CHANGES
