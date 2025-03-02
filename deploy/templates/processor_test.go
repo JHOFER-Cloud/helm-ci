@@ -33,7 +33,7 @@ func TestProcessDomainTemplate(t *testing.T) {
 		{
 			name: "embedded default template",
 			config: &config.Config{
-				DomainsTemplate: "default",
+				DomainTemplate: "default",
 				IngressHosts:    []string{"example.com", "www.example.com"},
 			},
 			expectError:  false,
@@ -42,7 +42,7 @@ func TestProcessDomainTemplate(t *testing.T) {
 		{
 			name: "embedded bitnami template",
 			config: &config.Config{
-				DomainsTemplate: "bitnami",
+				DomainTemplate: "bitnami",
 				IngressHosts:    []string{"example.com", "www.example.com"},
 			},
 			expectError:  false,
@@ -51,7 +51,7 @@ func TestProcessDomainTemplate(t *testing.T) {
 		{
 			name: "nonexistent template",
 			config: &config.Config{
-				DomainsTemplate: "nonexistent",
+				DomainTemplate: "nonexistent",
 				IngressHosts:    []string{"example.com"},
 			},
 			expectError: true,
@@ -59,7 +59,7 @@ func TestProcessDomainTemplate(t *testing.T) {
 		{
 			name: "empty ingress hosts",
 			config: &config.Config{
-				DomainsTemplate: "default",
+				DomainTemplate: "default",
 				IngressHosts:    []string{},
 			},
 			expectError: false,
@@ -123,7 +123,7 @@ func TestProcessDomainTemplate_CustomFile(t *testing.T) {
 
 	// Test with a custom template file
 	config := &config.Config{
-		DomainsTemplate: customPath,
+		DomainTemplate: customPath,
 		IngressHosts:    []string{"example.com", "www.example.com"},
 	}
 

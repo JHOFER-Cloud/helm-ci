@@ -231,7 +231,7 @@ func TestParseFlags_DefaultValues(t *testing.T) {
 		{"VaultBasePath", ""},
 		{"VaultInsecureTLS", false},
 		{"DEBUG", false},
-		{"DomainsTemplate", "default"}, // Added default domain template
+		{"DomainTemplate", "default"}, // Added default domain template
 	}
 
 	for _, check := range defaultChecks {

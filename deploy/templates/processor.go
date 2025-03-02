@@ -32,7 +32,7 @@ func ProcessDomainTemplate(cfg *config.Config) (string, error) {
 
 	// Determine template content
 	var templateContent string
-	templatePath := cfg.DomainsTemplate
+	templatePath := cfg.DomainTemplate
 
 	if !strings.Contains(templatePath, "/") {
 		// It's not a path, try to get it from embedded templates
