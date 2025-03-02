@@ -142,6 +142,11 @@ func (d *HelmDeployer) Deploy() error {
 		return err
 	}
 
+	// Check if we should proceed
+	if !utils.ConfirmDeployment(d.Config.DEBUG) {
+		return utils.NewError("Deployment cancelled by user")
+	}
+
 	// Proceed with actual deployment
 	cmd := d.Cmd.Command("helm", args...)
 	cmd.Stdout = os.Stdout

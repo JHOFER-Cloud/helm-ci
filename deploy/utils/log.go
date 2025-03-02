@@ -128,3 +128,15 @@ func ShowResourceDiff(current, proposed []byte, debug bool) error {
 
 	return nil
 }
+
+// ConfirmDeployment asks for confirmation before proceeding with deployment
+func ConfirmDeployment(debug bool) bool {
+	if !debug {
+		return true // If not in debug mode, proceed automatically
+	}
+
+	Green("Differences shown above. Continue with deployment? (Y/n): ")
+	var response string
+	fmt.Scanln(&response)
+	return response != "n" && response != "N"
+}

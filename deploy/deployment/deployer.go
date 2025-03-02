@@ -100,14 +100,6 @@ func (c *Common) ProcessValuesFileWithVault(filename string) (string, error) {
 	if c.Config.DEBUG {
 		utils.Log.Debugln("Processed content:")
 		fmt.Println(processedContent)
-
-		utils.Green("Looks good, deploy now? (Y/n): ")
-		var response string
-		fmt.Scanln(&response)
-
-		if response == "n" || response == "N" {
-			os.Exit(1)
-		}
 	}
 
 	// Create a temporary file for the processed values

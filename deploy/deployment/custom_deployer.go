@@ -49,6 +49,11 @@ func (d *CustomDeployer) Deploy() error {
 		return err
 	}
 
+	// Check if we should proceed
+	if !utils.ConfirmDeployment(d.Config.DEBUG) {
+		return utils.NewError("Deployment cancelled by user")
+	}
+
 	// Proceed with actual deployment
 	for _, manifest := range processedManifests {
 		cmd := d.Cmd.Command("kubectl", "apply", "-f", manifest, "-n", d.Config.Namespace)
