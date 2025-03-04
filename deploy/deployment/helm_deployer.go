@@ -113,25 +113,33 @@ func (d *HelmDeployer) Deploy() error {
 	}
 
 	// Process and add values files with Vault templating
-	commonValuesFile := filepath.Join(d.Config.ValuesPath, "common.y*ml")
-	if _, err := os.Stat(commonValuesFile); err == nil {
-		processedFile, err := d.ProcessValuesFileWithVault(commonValuesFile)
+	commonValuesPattern := filepath.Join(d.Config.ValuesPath, "common.y*ml")
+	matches, err := filepath.Glob(commonValuesPattern)
+	if err != nil {
+		return err
+	}
+	if len(matches) > 0 {
+		processedFile, err := d.ProcessValuesFileWithVault(matches[0])
 		if err != nil {
 			return err
 		}
-		if processedFile != commonValuesFile {
+		if processedFile != matches[0] {
 			defer os.Remove(processedFile)
 		}
 		args = append(args, "--values", processedFile)
 	}
 
-	stageValuesFile := filepath.Join(d.Config.ValuesPath, fmt.Sprintf("%s.y*ml", d.Config.Stage))
-	if _, err := os.Stat(stageValuesFile); err == nil {
-		processedFile, err := d.ProcessValuesFileWithVault(stageValuesFile)
+	stageValuesPattern := filepath.Join(d.Config.ValuesPath, fmt.Sprintf("%s.y*ml", d.Config.Stage))
+	matches, err = filepath.Glob(stageValuesPattern)
+	if err != nil {
+		return err
+	}
+	if len(matches) > 0 {
+		processedFile, err := d.ProcessValuesFileWithVault(matches[0])
 		if err != nil {
 			return err
 		}
-		if processedFile != stageValuesFile {
+		if processedFile != matches[0] {
 			defer os.Remove(processedFile)
 		}
 		args = append(args, "--values", processedFile)
