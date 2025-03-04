@@ -3,7 +3,7 @@ FROM ubuntu:24.04
 RUN apt-get update && apt-get install -y ca-certificates curl
 
 # Download the custom CA certificate
-RUN curl -o /usr/local/share/ca-certificates/custom-ca.crt http://pki.jhofer.lan/certs/root-ca.pem
+RUN curl -o /usr/local/share/ca-certificates/custom-ca.crt http://pki.jhofer.lan/certs/root-01-cert.pem
 
 # Update CA certificates
 RUN update-ca-certificates
