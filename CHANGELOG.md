@@ -1,3 +1,13 @@
+## [3.0.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.0...v3.0.1) (2025-03-04)
+
+### :bug: Fixes
+
+* helm staged files were not read ([49be5c0](https://github.com/JHOFER-Cloud/helm-ci/commit/49be5c0a0b7c1cce6a1037748278615c438fbf53))
+
+### :repeat: Chore
+
+* **release:** 3.0.1-dev.1 [skip ci] ([03a8630](https://github.com/JHOFER-Cloud/helm-ci/commit/03a8630d88a993ecf5bd2909000296420e89d945))
+
 ## [3.0.1-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.0...v3.0.1-dev.1) (2025-03-04)
 
 ### :bug: Fixes
