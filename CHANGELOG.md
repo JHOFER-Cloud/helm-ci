@@ -1,3 +1,9 @@
+## [3.0.1-dev.2](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.1-dev.1...v3.0.1-dev.2) (2025-03-07)
+
+### :repeat: CI
+
+* update CA location ([7325518](https://github.com/JHOFER-Cloud/helm-ci/commit/7325518ad2e4bdee3c79ccbf9f583fe4f071f477))
+
 ## [3.0.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.0...v3.0.1) (2025-03-04)
 
 ### :bug: Fixes
@@ -7,6 +13,7 @@
 ### :repeat: Chore
 
 * **release:** 3.0.1-dev.1 [skip ci] ([03a8630](https://github.com/JHOFER-Cloud/helm-ci/commit/03a8630d88a993ecf5bd2909000296420e89d945))
+
 
 ## [3.0.1-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.0...v3.0.1-dev.1) (2025-03-04)
 
