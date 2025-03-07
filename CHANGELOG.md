@@ -1,3 +1,9 @@
+## [3.1.0-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.2-dev.1...v3.1.0-dev.1) (2025-03-07)
+
+### :sparkles: Features
+
+* staged custom namespace ([b219996](https://github.com/JHOFER-Cloud/helm-ci/commit/b219996f78c9bf9be2031fb0e4132a49d520509e))
+
 ## [3.0.2-dev.1](https://github.com/JHOFER-Cloud/helm-ci/compare/v3.0.1...v3.0.2-dev.1) (2025-03-07)
 
 ### :repeat: CI
