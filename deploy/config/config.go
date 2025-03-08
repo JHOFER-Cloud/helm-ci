@@ -25,33 +25,34 @@ import (
 
 // Config holds all the configuration for the deployment
 type Config struct {
-	AppName          string
-	Chart            string
-	Custom           bool
-	CustomNameSpace  string
-	DEBUG            bool
-	Domains          []string
-	DomainTemplate   string
-	Environment      string
-	GitHubOwner      string
-	GitHubRepo       string
-	GitHubToken      string
-	IngressHosts     []string
-	Namespace        string
-	PRDeployments    bool
-	PRNumber         string
-	ReleaseName      string
-	Repository       string
-	RootCA           string
-	Stage            string
-	TraefikDashboard bool
-	ValuesPath       string
-	VaultBasePath    string
-	VaultInsecureTLS bool
-	VaultToken       string
-	VaultURL         string
-	Version          string
-	VaultKVVersion   int
+	AppName               string
+	Chart                 string
+	Custom                bool
+	CustomNameSpace       string
+	CustomNameSpaceStaged bool
+	DEBUG                 bool
+	Domains               []string
+	DomainTemplate        string
+	Environment           string
+	GitHubOwner           string
+	GitHubRepo            string
+	GitHubToken           string
+	IngressHosts          []string
+	Namespace             string
+	PRDeployments         bool
+	PRNumber              string
+	ReleaseName           string
+	Repository            string
+	RootCA                string
+	Stage                 string
+	TraefikDashboard      bool
+	ValuesPath            string
+	VaultBasePath         string
+	VaultInsecureTLS      bool
+	VaultToken            string
+	VaultURL              string
+	Version               string
+	VaultKVVersion        int
 }
 
 // ParseFlags parses command line flags and returns a Config
@@ -72,6 +73,7 @@ func ParseFlags() *Config {
 	domainsStr := flag.String("domains", "", "Comma-separated list of domains")
 	flag.StringVar(&cfg.DomainTemplate, "domain-template", "default", "Domain template to use")
 	flag.StringVar(&cfg.CustomNameSpace, "custom-namespace", "", "Custom K8s Namespace")
+	flag.BoolVar(&cfg.CustomNameSpaceStaged, "custom-namespace-staged", false, "Custom K8s Namespace")
 	flag.BoolVar(&cfg.Custom, "custom", false, "Custom Kubernetes deployment")
 	flag.BoolVar(&cfg.TraefikDashboard, "traefik-dashboard", false, "Deploy Traefik dashboard")
 	flag.StringVar(&cfg.RootCA, "root-ca", "", "Path to root CA certificate")
@@ -133,10 +135,13 @@ func (c *Config) PrintConfig() {
 func (c *Config) SetupNames() {
 	if c.CustomNameSpace != "" {
 		c.Namespace = c.CustomNameSpace
+		if c.CustomNameSpaceStaged {
+			c.Namespace = c.CustomNameSpace + "-" + c.Stage
+		}
 	} else if c.Stage == "live" {
 		c.Namespace = c.AppName
 	} else {
-		c.Namespace = c.AppName + "-dev"
+		c.Namespace = c.AppName + "-" + c.Stage
 	}
 
 	// Set the release name based on stage and PR number

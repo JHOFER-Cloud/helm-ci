@@ -8,6 +8,9 @@ on:
       custom_namespace:
         required: false
         type: string
+      custom_namespace_staged:
+        required: false
+        type: boolean
       helm-ci_image_tag:
         required: true
         type: string
@@ -80,6 +83,10 @@ on:
       VAULT_TOKEN:
         required: false
 
+concurrency:
+  group: ${{ inputs.app_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: self-hosted-ubuntu-24.10
@@ -140,6 +147,7 @@ jobs:
             --root-ca="${{ inputs.root_ca }}" \
             --pr-deployments="${{ inputs.pr_deployments }}" \
             --custom-namespace="${{ inputs.custom_namespace }}" \
+            --custom-namespace-staged="${{ inputs.custom_namespace_staged }}" \
             --custom="${{ inputs.custom_deployment }}"
       - name: Check domain accessibility
         id: check_domain

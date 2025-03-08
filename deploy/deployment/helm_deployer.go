@@ -160,8 +160,16 @@ func (d *HelmDeployer) Deploy() error {
 
 	// Show diff first
 	utils.Green("Showing differences:")
-	if err := d.GetDiff(args, true); err != nil {
-		return err
+	diffErr := d.GetDiff(args, true)
+
+	// Special handling for CRD errors
+	if diffErr != nil && strings.Contains(diffErr.Error(), "CRD_ERROR") {
+		utils.Log.Warning("Chart contains CRDs that are not yet installed.")
+		utils.Log.Info("This is normal for first-time installation of charts with CRDs.")
+		utils.Log.Info("Proceeding with installation...")
+	} else if diffErr != nil {
+		// For all other errors, return the error
+		return diffErr
 	}
 
 	// Check if we should proceed

@@ -138,8 +138,8 @@ func TestConfig_SetupNames_EdgeCases(t *testing.T) {
 				Domains:  []string{"example.com"},
 				PRNumber: "42",
 			},
-			expectedNS:      "test-app-dev", // Default behavior without stage
-			expectedRelease: "test-app",     // Default release name
+			expectedNS:      "test-app-", // Default behavior without stage
+			expectedRelease: "test-app",  // Default release name
 			expectedHosts:   []string{"test-app.example.com"},
 		},
 		{
@@ -156,6 +156,45 @@ func TestConfig_SetupNames_EdgeCases(t *testing.T) {
 				"test-app.example.org",
 				"test-app.example.net",
 			},
+		},
+		{
+			name: "custom namespace with stage suffix option enabled",
+			config: &Config{
+				AppName:               "test-app",
+				Stage:                 "dev",
+				CustomNameSpace:       "custom-ns",
+				CustomNameSpaceStaged: true,
+				Domains:               []string{"example.com"},
+			},
+			expectedNS:      "custom-ns-dev", // Should add stage suffix
+			expectedRelease: "test-app",
+			expectedHosts:   []string{"test-app.example.com"},
+		},
+		{
+			name: "custom namespace with stage suffix option enabled for live",
+			config: &Config{
+				AppName:               "test-app",
+				Stage:                 "live",
+				CustomNameSpace:       "custom-ns",
+				CustomNameSpaceStaged: true,
+				Domains:               []string{"example.com"},
+			},
+			expectedNS:      "custom-ns-live", // Should add stage suffix even for live
+			expectedRelease: "test-app",
+			expectedHosts:   []string{"test-app.example.com"},
+		},
+		{
+			name: "custom namespace with stage suffix option disabled",
+			config: &Config{
+				AppName:               "test-app",
+				Stage:                 "dev",
+				CustomNameSpace:       "custom-ns",
+				CustomNameSpaceStaged: false,
+				Domains:               []string{"example.com"},
+			},
+			expectedNS:      "custom-ns", // Should not add stage suffix
+			expectedRelease: "test-app",
+			expectedHosts:   []string{"test-app.example.com"},
 		},
 	}
 
@@ -224,6 +263,7 @@ func TestParseFlags_DefaultValues(t *testing.T) {
 		{"Repository", ""},
 		{"Domains", []string(nil)},
 		{"CustomNameSpace", ""},
+		{"CustomNameSpaceStaged", false}, // Check default for the new field
 		{"Custom", false},
 		{"TraefikDashboard", false},
 		{"RootCA", ""},
@@ -273,6 +313,21 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 			expectedHosts:   []string{"test-app-pr-42.dev.example.com"},
 		},
 		{
+			name: "custom namespace with staged suffix and PR number",
+			config: &Config{
+				AppName:               "test-app",
+				Stage:                 "dev",
+				PRNumber:              "42",
+				Domains:               []string{"dev.example.com"},
+				PRDeployments:         true,
+				CustomNameSpace:       "custom-ns",
+				CustomNameSpaceStaged: true,
+			},
+			expectedNS:      "custom-ns-dev", // Should include stage suffix
+			expectedRelease: "test-app-pr-42",
+			expectedHosts:   []string{"test-app-pr-42.dev.example.com"},
+		},
+		{
 			name: "live stage with custom namespace and PR",
 			config: &Config{
 				AppName:         "test-app",
@@ -283,6 +338,21 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 				CustomNameSpace: "custom-live", // And custom namespace
 			},
 			expectedNS:      "custom-live",                    // Custom namespace takes precedence over live
+			expectedRelease: "test-app",                       // Live stage doesn't use PR in release name
+			expectedHosts:   []string{"test-app.example.com"}, // Live stage doesn't use PR in host
+		},
+		{
+			name: "live stage with custom namespace with staged suffix and PR",
+			config: &Config{
+				AppName:               "test-app",
+				Stage:                 "live", // Live environment
+				PRNumber:              "42",   // With PR number
+				Domains:               []string{"example.com"},
+				PRDeployments:         true,
+				CustomNameSpace:       "custom-ns", // Custom namespace
+				CustomNameSpaceStaged: true,        // With stage suffix
+			},
+			expectedNS:      "custom-ns-live",                 // Should include stage suffix
 			expectedRelease: "test-app",                       // Live stage doesn't use PR in release name
 			expectedHosts:   []string{"test-app.example.com"}, // Live stage doesn't use PR in host
 		},
@@ -314,6 +384,19 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 				"test-app-pr-42.dev1.example.com",
 				"test-app-pr-42.dev2.example.com",
 			},
+		},
+		{
+			name: "custom stage with custom namespace with staged suffix",
+			config: &Config{
+				AppName:               "test-app",
+				Stage:                 "staging", // Custom stage name
+				CustomNameSpace:       "custom-prefix",
+				CustomNameSpaceStaged: true,
+				Domains:               []string{"staging.example.com"},
+			},
+			expectedNS:      "custom-prefix-staging", // Should append custom stage name
+			expectedRelease: "test-app",
+			expectedHosts:   []string{"test-app.staging.example.com"},
 		},
 	}
 
