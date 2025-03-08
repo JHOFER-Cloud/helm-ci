@@ -23,6 +23,9 @@ import (
 //go:embed domains/default.yml
 var DefaultDomainTemplate string
 
+//go:embed domains/single_domains.yml
+var SingleDomainsDomainTemplate string
+
 //go:embed domains/bitnami.yml
 var BitnamiDomainTemplate string
 
@@ -35,6 +38,8 @@ func GetEmbeddedTemplate(name string) (string, bool) {
 	switch name {
 	case "default":
 		return DefaultDomainTemplate, true
+	case "single_domains":
+		return SingleDomainsDomainTemplate, true
 	case "bitnami":
 		return BitnamiDomainTemplate, true
 	case "vault":
@@ -48,6 +53,7 @@ func GetEmbeddedTemplate(name string) (string, bool) {
 func ListEmbeddedTemplates() []string {
 	return []string{
 		"default",
+		"single_domains",
 		"bitnami",
 		"vault",
 	}
