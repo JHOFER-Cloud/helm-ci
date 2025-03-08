@@ -135,7 +135,7 @@ func (c *Config) PrintConfig() {
 func (c *Config) SetupNames() {
 	if c.CustomNameSpace != "" {
 		c.Namespace = c.CustomNameSpace
-		if c.CustomNameSpaceStaged {
+		if c.CustomNameSpaceStaged && c.Stage != "live" {
 			c.Namespace = c.CustomNameSpace + "-" + c.Stage
 		}
 	} else if c.Stage == "live" {

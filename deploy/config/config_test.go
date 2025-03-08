@@ -171,15 +171,15 @@ func TestConfig_SetupNames_EdgeCases(t *testing.T) {
 			expectedHosts:   []string{"test-app.example.com"},
 		},
 		{
-			name: "custom namespace with stage suffix option enabled for live",
+			name: "custom namespace with stage suffix option enabled for dev",
 			config: &Config{
 				AppName:               "test-app",
-				Stage:                 "live",
+				Stage:                 "dev",
 				CustomNameSpace:       "custom-ns",
 				CustomNameSpaceStaged: true,
 				Domains:               []string{"example.com"},
 			},
-			expectedNS:      "custom-ns-live", // Should add stage suffix even for live
+			expectedNS:      "custom-ns-dev", // Should add stage suffix even for live
 			expectedRelease: "test-app",
 			expectedHosts:   []string{"test-app.example.com"},
 		},
@@ -335,9 +335,9 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 				PRNumber:        "42",   // With PR number
 				Domains:         []string{"example.com"},
 				PRDeployments:   true,
-				CustomNameSpace: "custom-live", // And custom namespace
+				CustomNameSpace: "custom", // And custom namespace
 			},
-			expectedNS:      "custom-live",                    // Custom namespace takes precedence over live
+			expectedNS:      "custom",                         // Custom namespace takes precedence over live
 			expectedRelease: "test-app",                       // Live stage doesn't use PR in release name
 			expectedHosts:   []string{"test-app.example.com"}, // Live stage doesn't use PR in host
 		},
@@ -352,7 +352,7 @@ func TestConfig_SetupNames_Combinations(t *testing.T) {
 				CustomNameSpace:       "custom-ns", // Custom namespace
 				CustomNameSpaceStaged: true,        // With stage suffix
 			},
-			expectedNS:      "custom-ns-live",                 // Should include stage suffix
+			expectedNS:      "custom-ns",                      // Should include stage suffix
 			expectedRelease: "test-app",                       // Live stage doesn't use PR in release name
 			expectedHosts:   []string{"test-app.example.com"}, // Live stage doesn't use PR in host
 		},
