@@ -293,7 +293,7 @@ func (c *Common) GetDiff(args []string, isHelm bool) error {
 			cmd := c.Cmd.Command("kubectl", "diff", "-f", manifest, "-n", c.Config.Namespace)
 			output, err := c.Cmd.CombinedOutput(cmd)
 
-			utils.Green("\nDiff for %s:\n", manifest)
+			utils.Green("Diff for %s:", manifest)
 			fmt.Println(utils.ColorizeKubectlDiff(string(output)))
 
 			if err != nil {

@@ -158,6 +158,33 @@ func (d *HelmDeployer) Deploy() error {
 	// Add root CA args
 	args = append(args, d.GetRootCAArgs()...)
 
+	// Pre-install CRDs for first-time chart installation
+	existingReleaseCmd := d.Cmd.Command("helm", "get", "manifest", d.Config.ReleaseName, "-n", d.Config.Namespace)
+	_, existingErr := d.Cmd.Output(existingReleaseCmd)
+	if existingErr != nil {
+		// If release doesn't exist, try to pre-install CRDs
+		utils.Log.Info("First-time installation, pre-installing CRDs...")
+		crdArgs := append([]string{"install", "--dry-run", "--only-crds", d.Config.ReleaseName}, args...)
+		crdCmd := d.Cmd.Command("helm", crdArgs...)
+		crdOutput, err := d.Cmd.Output(crdCmd)
+		if err == nil && len(crdOutput) > 0 {
+			// Create a temp file for CRDs
+			tmpFile, err := os.CreateTemp("", "crds-*.yaml")
+			if err == nil {
+				defer os.Remove(tmpFile.Name())
+				if _, err := tmpFile.Write(crdOutput); err == nil {
+					// Apply the CRDs
+					applyCrdCmd := d.Cmd.Command("kubectl", "apply", "-f", tmpFile.Name())
+					if err := d.Cmd.Run(applyCrdCmd); err == nil {
+						utils.Log.Info("CRDs installed successfully.")
+					} else {
+						utils.Log.Warningf("Failed to apply CRDs: %v", err)
+					}
+				}
+			}
+		}
+	}
+
 	// Show diff first
 	utils.Green("Showing differences:")
 	if err := d.GetDiff(args, true); err != nil {
