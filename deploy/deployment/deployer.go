@@ -255,16 +255,40 @@ func (c *Common) GetDiff(args []string, isHelm bool) error {
 		current, err := c.Cmd.Output(currentCmd)
 		if err != nil {
 			utils.Log.Info("No existing release found. Showing what would be installed:")
+
+			// Run dry-run and catch any errors
 			dryRunArgs := append(args, "--dry-run")
 			cmd := c.Cmd.Command("helm", dryRunArgs...)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			if err := c.Cmd.Run(cmd); err != nil {
-				// Add more detailed error information
-				utils.Log.Errorf("Dry-run failed: %v", err)
-				if exitErr, ok := err.(*exec.ExitError); ok {
-					utils.Log.Errorf("Stderr: %s", string(exitErr.Stderr))
+
+			// Capture both stdout and stderr
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout = &stdout
+			cmd.Stderr = &stderr
+
+			err := c.Cmd.Run(cmd)
+
+			// Print the output regardless of error
+			if stdout.Len() > 0 {
+				fmt.Println(stdout.String())
+			}
+
+			// If there's an error, check if it's CRD related
+			if err != nil {
+				errStr := stderr.String()
+				if strings.Contains(errStr, "no matches for kind") &&
+					strings.Contains(errStr, "ensure CRDs are installed first") {
+					// This is a CRD-related error
+					utils.Log.Warning("Dry-run failed due to missing CRDs")
+
+					// Pass the error up so Deploy() can handle it appropriately
+					if _, ok := err.(*exec.ExitError); ok {
+						return fmt.Errorf("CRD error: %s", errStr)
+					}
+					return fmt.Errorf("failed to get proposed state: %w", err)
 				}
+
+				// For non-CRD errors, just return the error
+				utils.Log.Errorf("Dry-run failed: %v", err)
 				return fmt.Errorf("failed to get proposed state: %w", err)
 			}
 			return nil
@@ -293,7 +317,7 @@ func (c *Common) GetDiff(args []string, isHelm bool) error {
 			cmd := c.Cmd.Command("kubectl", "diff", "-f", manifest, "-n", c.Config.Namespace)
 			output, err := c.Cmd.CombinedOutput(cmd)
 
-			utils.Green("Diff for %s:", manifest)
+			utils.Green("\nDiff for %s:\n", manifest)
 			fmt.Println(utils.ColorizeKubectlDiff(string(output)))
 
 			if err != nil {
