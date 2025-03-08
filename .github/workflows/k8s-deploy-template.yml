@@ -83,6 +83,10 @@ on:
       VAULT_TOKEN:
         required: false
 
+concurrency:
+  group: ${{ inputs.app_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: self-hosted-ubuntu-24.10
