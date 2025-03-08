@@ -158,79 +158,23 @@ func (d *HelmDeployer) Deploy() error {
 	// Add root CA args
 	args = append(args, d.GetRootCAArgs()...)
 
-	// Check if release exists
-	existingReleaseCmd := d.Cmd.Command("helm", "get", "manifest", d.Config.ReleaseName, "-n", d.Config.Namespace)
-	_, existingErr := d.Cmd.Output(existingReleaseCmd)
-	isFirstInstall := existingErr != nil
+	// Show diff first
+	utils.Green("Showing differences:")
+	diffErr := d.GetDiff(args, true)
 
-	// First, try to detect if the chart contains CRDs
-	hasCRDs := false
-
-	if isFirstInstall {
-		// Run a limited template command to check for CRDs
-		templateArgs := []string{"template", d.Config.ReleaseName}
-
-		// Add the chart reference
-		if strings.HasPrefix(d.Config.Repository, "oci://") {
-			templateArgs = append(templateArgs, fmt.Sprintf("%s/%s", d.Config.Repository, d.Config.Chart))
-		} else {
-			templateArgs = append(templateArgs, fmt.Sprintf("%s/%s", d.Config.AppName, d.Config.Chart))
-		}
-
-		templateArgs = append(templateArgs, "--include-crds", "--namespace", d.Config.Namespace)
-		if d.Config.Version != "" {
-			templateArgs = append(templateArgs, "--version", d.Config.Version)
-		}
-
-		// Use --dry-run for the template check
-		templateArgs = append(templateArgs, "--dry-run")
-
-		utils.Log.Info("Checking if chart contains CRDs...")
-		templateCmd := d.Cmd.Command("helm", templateArgs...)
-		output, err := d.Cmd.Output(templateCmd)
-
-		// Check if the output contains CustomResourceDefinition
-		if err == nil && strings.Contains(string(output), "CustomResourceDefinition") {
-			utils.Log.Info("Chart contains CRDs. Skipping diff preview to avoid CRD issues.")
-			hasCRDs = true
-		}
+	// Special handling for CRD errors
+	if diffErr != nil && strings.Contains(diffErr.Error(), "CRD_ERROR") {
+		utils.Log.Warning("Chart contains CRDs that are not yet installed.")
+		utils.Log.Info("This is normal for first-time installation of charts with CRDs.")
+		utils.Log.Info("Proceeding with installation...")
+	} else if diffErr != nil {
+		// For all other errors, return the error
+		return diffErr
 	}
 
-	// Try to show diff preview if not a first installation with CRDs
-	if !isFirstInstall || !hasCRDs {
-		utils.Green("Showing differences:")
-		diffErr := d.GetDiff(args, true)
-
-		// If diff fails and this is a first install, check if it's a CRD-related error
-		if diffErr != nil && isFirstInstall {
-			errMsg := diffErr.Error()
-			if strings.Contains(errMsg, "no matches for kind") &&
-				strings.Contains(errMsg, "ensure CRDs are installed first") {
-				utils.Log.Warning("Diff failed due to missing CRDs. Proceeding directly with installation.")
-				hasCRDs = true
-			} else {
-				// For non-CRD related errors, return the error
-				return diffErr
-			}
-		} else if diffErr != nil {
-			// For existing installations, any diff error is a real error
-			return diffErr
-		}
-
-		// Check if we should proceed (unless we've determined we need to skip the diff)
-		if !hasCRDs {
-			if !utils.ConfirmDeployment(d.Config.DEBUG) {
-				return utils.NewError("Deployment cancelled by user")
-			}
-		}
-	}
-
-	// For charts with CRDs on first install, we've already decided to proceed
-	if hasCRDs && isFirstInstall {
-		utils.Log.Info("Proceeding with installation (CRDs will be installed automatically)...")
-		if !utils.ConfirmDeployment(d.Config.DEBUG) {
-			return utils.NewError("Deployment cancelled by user")
-		}
+	// Check if we should proceed
+	if !utils.ConfirmDeployment(d.Config.DEBUG) {
+		return utils.NewError("Deployment cancelled by user")
 	}
 
 	// Proceed with actual deployment

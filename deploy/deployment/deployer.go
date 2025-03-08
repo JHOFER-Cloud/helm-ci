@@ -256,39 +256,27 @@ func (c *Common) GetDiff(args []string, isHelm bool) error {
 		if err != nil {
 			utils.Log.Info("No existing release found. Showing what would be installed:")
 
-			// Run dry-run and catch any errors
+			// For a new installation, we need to capture both stdout and stderr
+			// while still showing them to the user
 			dryRunArgs := append(args, "--dry-run")
 			cmd := c.Cmd.Command("helm", dryRunArgs...)
 
-			// Capture both stdout and stderr
-			var stdout, stderr bytes.Buffer
-			cmd.Stdout = &stdout
-			cmd.Stderr = &stderr
+			// Capture both stdout and stderr while also displaying them
+			var stdoutBuf, stderrBuf bytes.Buffer
+			cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
+			cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
 
 			err := c.Cmd.Run(cmd)
-
-			// Print the output regardless of error
-			if stdout.Len() > 0 {
-				fmt.Println(stdout.String())
-			}
-
-			// If there's an error, check if it's CRD related
 			if err != nil {
-				errStr := stderr.String()
+				// Check if this error is related to missing CRDs
+				errStr := stderrBuf.String()
 				if strings.Contains(errStr, "no matches for kind") &&
 					strings.Contains(errStr, "ensure CRDs are installed first") {
-					// This is a CRD-related error
-					utils.Log.Warning("Dry-run failed due to missing CRDs")
-
-					// Pass the error up so Deploy() can handle it appropriately
-					if _, ok := err.(*exec.ExitError); ok {
-						return fmt.Errorf("CRD error: %s", errStr)
-					}
-					return fmt.Errorf("failed to get proposed state: %w", err)
+					// Return a special error for CRD-related failures
+					return fmt.Errorf("CRD_ERROR")
 				}
 
-				// For non-CRD errors, just return the error
-				utils.Log.Errorf("Dry-run failed: %v", err)
+				// For normal errors, return as usual
 				return fmt.Errorf("failed to get proposed state: %w", err)
 			}
 			return nil
