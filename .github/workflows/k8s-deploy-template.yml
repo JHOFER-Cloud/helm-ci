@@ -1,5 +1,16 @@
 name: Reusable Kubernetes Deploy
 on:
+  # Allow manual triggering
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: "Deploy to"
+        required: true
+        default: "Development"
+        type: choice
+        options:
+          - Development
+          - Production
   workflow_call:
     inputs:
       app_name:
@@ -90,7 +101,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: self-hosted-ubuntu-24.10
-    environment: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Production' || 'Development' }}
+    environment: ${{ (github.event_name == 'workflow_dispatch' && inputs.deploy_environment) || (github.event_name == 'push' && github.ref == 'refs/heads/main' && 'Production' || 'Development') }}
     container:
       image: ghcr.io/jhofer-cloud/helm-ci:${{ inputs.helm-ci_image_tag }}
     steps:
