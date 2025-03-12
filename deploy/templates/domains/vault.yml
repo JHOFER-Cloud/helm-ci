@@ -1,6 +1,7 @@
 server:
   ingress:
     hosts:
-    {{- range $i, $domain := .Domains }}
-      - host: {{ $domain }}
+    {{- range $host := .IngressHosts }}
+      - host: {{ $host }}
+        paths: []
     {{- end }}
