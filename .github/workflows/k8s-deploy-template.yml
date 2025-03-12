@@ -1,20 +1,5 @@
 name: Reusable Kubernetes Deploy
 on:
-  push:
-    paths:
-      - ${{ env.VALUES_PATH }}/**/*
-  # Allow manual triggering
-  workflow_dispatch:
-    inputs:
-      deploy_environment:
-        description: "Deploy to"
-        required: true
-        default: "Development"
-        type: choice
-        options:
-          - Development
-          - Production
-
   workflow_call:
     inputs:
       app_name:
@@ -101,9 +86,6 @@ on:
 concurrency:
   group: ${{ inputs.app_name }}-${{ github.ref }}
   cancel-in-progress: true
-
-env:
-  VALUES_PATH: ${{ inputs.values_path }}
 
 jobs:
   deploy:
