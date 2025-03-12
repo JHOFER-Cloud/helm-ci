@@ -1,14 +1,8 @@
 name: Reusable Kubernetes Deploy
 on:
   push:
-    branches:
-      - main
-      - dev
     paths:
       - ${{ inputs.values_path }}/**/*
-  pull_request:
-    branches:
-      - dev
   # Allow manual triggering
   workflow_dispatch:
     inputs:
