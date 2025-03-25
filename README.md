@@ -1,4 +1,6 @@
-# HELM CI/CD
+# HELM CI/CD (ARCHIVED)
+
+I migrated to FluxCD
 
 ## Usage
 
